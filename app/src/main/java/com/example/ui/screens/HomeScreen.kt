@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -53,6 +54,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,7 +73,6 @@ import com.example.model.StatusUpdate
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.components.PinggoHeaderBrand
 import com.example.model.User
-import com.example.model.handle
 import com.example.ui.components.GlassAvatar
 import com.example.ui.components.GlassBottomBar
 import com.example.ui.components.GlassCard
@@ -98,9 +99,17 @@ fun HomeScreen(
   onOpenChat: (Conversation) -> Unit,
   onOpenSearch: () -> Unit,
   onOpenCreateGroup: () -> Unit,
-  onOpenSettings: (String) -> Unit
+  onOpenSettings: (String) -> Unit,
+  initialTab: String = "Chats"
 ) {
-  var selectedTab by remember { mutableStateOf("Chats") } // "Chats", "Calls", "Updates", "Profile"
+  var selectedTab by rememberSaveable { mutableStateOf(initialTab) } // "Chats", "Calls", "Updates", "Profile"
+
+  // Android system Back button handler:
+  // When on Calls, Updates, or Profile screen, pressing Back returns directly to the main Chat screen (Chat List) in one press.
+  // When on Chats screen (main destination), BackHandler is disabled to allow normal activity lifecycle.
+  BackHandler(enabled = selectedTab != "Chats") {
+    selectedTab = "Chats"
+  }
 
   LiquidGlassBackground {
     Scaffold(
@@ -230,6 +239,7 @@ fun ChatsTab(
     modifier = Modifier
       .fillMaxSize()
       .statusBarsPadding()
+      .testTag("chats_tab_screen")
   ) {
     // Top Bar matching Screen 4
     Row(
@@ -477,6 +487,7 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
       .fillMaxSize()
       .statusBarsPadding()
       .padding(horizontal = 20.dp)
+      .testTag("calls_tab_screen")
   ) {
     Row(
       modifier = Modifier
@@ -606,6 +617,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
       .fillMaxSize()
       .statusBarsPadding()
       .padding(horizontal = 20.dp)
+      .testTag("updates_tab_screen")
   ) {
     Row(
       modifier = Modifier
@@ -746,6 +758,7 @@ fun ProfileTab(
       .fillMaxSize()
       .statusBarsPadding()
       .padding(horizontal = 20.dp)
+      .testTag("profile_tab_screen")
   ) {
     Row(
       modifier = Modifier
@@ -784,7 +797,7 @@ fun ProfileTab(
           color = Color.White
         )
         Text(
-          text = user?.handle ?: "@username",
+          text = "@${user?.username ?: "username"}",
           fontSize = 14.sp,
           color = PinggoMint,
           fontWeight = FontWeight.Medium
