@@ -1,0 +1,6 @@
+{
+  "name": "Pinggo",
+  "description": "Real-time mobile messaging with Apple-inspired Liquid Glass design, emerald accents, voice notes, calls, groups, and real-time chat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

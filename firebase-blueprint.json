@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "path": "users/{userId}",
+      "fields": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "lastSeen": { "type": "number" },
+        "isOnline": { "type": "boolean" },
+        "fcmToken": { "type": "string" },
+        "privacyLastSeen": { "type": "string" },
+        "privacyReadReceipts": { "type": "boolean" }
+      }
+    },
+    "Username": {
+      "path": "usernames/{username}",
+      "fields": {
+        "uid": { "type": "string" }
+      }
+    },
+    "Conversation": {
+      "path": "conversations/{conversationId}",
+      "fields": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "participants": { "type": "array" },
+        "participantDetails": { "type": "map" },
+        "lastMessage": { "type": "string" },
+        "lastMessageTimestamp": { "type": "number" },
+        "lastMessageSenderId": { "type": "string" },
+        "unreadCounts": { "type": "map" },
+        "groupName": { "type": "string" },
+        "groupPhoto": { "type": "string" },
+        "groupDescription": { "type": "string" },
+        "adminUids": { "type": "array" },
+        "pinnedBy": { "type": "array" },
+        "mutedBy": { "type": "array" },
+        "archivedBy": { "type": "array" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "Message": {
+      "path": "conversations/{conversationId}/messages/{messageId}",
+      "fields": {
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "type": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "voiceDurationSec": { "type": "number" },
+        "timestamp": { "type": "number" },
+        "delivered": { "type": "boolean" },
+        "read": { "type": "boolean" },
+        "readBy": { "type": "array" },
+        "replyToMessageId": { "type": "string" },
+        "replyToText": { "type": "string" },
+        "replyToSender": { "type": "string" },
+        "reactions": { "type": "map" },
+        "isEdited": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" }
+      }
+    },
+    "Call": {
+      "path": "calls/{callId}",
+      "fields": {
+        "id": { "type": "string" },
+        "callerId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "callerName": { "type": "string" },
+        "callerPhoto": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "receiverPhoto": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "Update": {
+      "path": "updates/{updateId}",
+      "fields": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "number" }
+      }
+    }
+  }
+}
