@@ -1,13 +1,17 @@
 package com.example
 
 import android.app.Application
-import com.google.firebase.FirebaseApp
+import android.util.Log
+import com.example.util.FirebaseInitializer
 
 class PinggoApplication : Application() {
   override fun onCreate() {
     super.onCreate()
-    if (FirebaseApp.getApps(this).isEmpty()) {
-      FirebaseApp.initializeApp(this)
+    try {
+      FirebaseInitializer.initialize(this)
+    } catch (t: Throwable) {
+      Log.e("PinggoApplication", "Startup error in PinggoApplication onCreate: ${t.message}", t)
     }
   }
 }
+

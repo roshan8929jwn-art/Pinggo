@@ -1,5 +1,6 @@
 package com.example.data
 
+import android.util.Log
 import com.example.model.CallSession
 import com.example.model.Conversation
 import com.example.model.Message
@@ -16,7 +17,13 @@ import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class FirestoreChatRepository {
-  private val firestore = FirebaseFirestore.getInstance()
+  private val firestore: FirebaseFirestore?
+    get() = try {
+      FirebaseFirestore.getInstance()
+    } catch (e: Throwable) {
+      Log.w("FirestoreChatRepo", "FirebaseFirestore not ready: ${e.message}")
+      null
+    }
 
   /**
    * Real-time listener for current user's conversations
@@ -28,76 +35,94 @@ class FirestoreChatRepository {
       return@callbackFlow
     }
 
-    val query = firestore.collection("conversations")
-      .whereArrayContains("participants", userId)
-
-    val listener: ListenerRegistration = query.addSnapshotListener { snapshot, error ->
-      if (error != null) {
-        error.printStackTrace()
-        return@addSnapshotListener
-      }
-      if (snapshot != null) {
-        val list = snapshot.documents.mapNotNull { doc ->
-          try {
-            val data = doc.data ?: return@mapNotNull null
-            val id = doc.id
-            val type = data["type"] as? String ?: "direct"
-            @Suppress("UNCHECKED_CAST")
-            val participants = (data["participants"] as? List<String>) ?: emptyList()
-            @Suppress("UNCHECKED_CAST")
-            val detailsRaw = data["participantDetails"] as? Map<String, Map<String, Any?>> ?: emptyMap()
-            val details = detailsRaw.mapValues { ParticipantInfo.fromMap(it.value) }
-
-            val lastMessage = data["lastMessage"] as? String ?: ""
-            val lastMessageTimestamp = (data["lastMessageTimestamp"] as? Number)?.toLong() ?: 0L
-            val lastMessageSenderId = data["lastMessageSenderId"] as? String ?: ""
-            @Suppress("UNCHECKED_CAST")
-            val unreadCounts = (data["unreadCounts"] as? Map<String, Number>)
-              ?.mapValues { it.value.toInt() } ?: emptyMap()
-
-            val groupName = data["groupName"] as? String ?: ""
-            val groupPhoto = data["groupPhoto"] as? String ?: ""
-            val groupDescription = data["groupDescription"] as? String ?: ""
-            @Suppress("UNCHECKED_CAST")
-            val adminUids = (data["adminUids"] as? List<String>) ?: emptyList()
-            @Suppress("UNCHECKED_CAST")
-            val pinnedBy = (data["pinnedBy"] as? List<String>) ?: emptyList()
-            @Suppress("UNCHECKED_CAST")
-            val mutedBy = (data["mutedBy"] as? List<String>) ?: emptyList()
-            @Suppress("UNCHECKED_CAST")
-            val archivedBy = (data["archivedBy"] as? List<String>) ?: emptyList()
-            val createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L
-            val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L
-
-            Conversation(
-              id = id,
-              type = type,
-              participants = participants,
-              participantDetails = details,
-              lastMessage = lastMessage,
-              lastMessageTimestamp = lastMessageTimestamp,
-              lastMessageSenderId = lastMessageSenderId,
-              unreadCounts = unreadCounts,
-              groupName = groupName,
-              groupPhoto = groupPhoto,
-              groupDescription = groupDescription,
-              adminUids = adminUids,
-              pinnedBy = pinnedBy,
-              mutedBy = mutedBy,
-              archivedBy = archivedBy,
-              createdAt = createdAt,
-              updatedAt = updatedAt
-            )
-          } catch (e: Exception) {
-            e.printStackTrace()
-            null
-          }
-        }.sortedByDescending { it.lastMessageTimestamp }
-        trySend(list)
-      }
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
     }
 
-    awaitClose { listener.remove() }
+    var listener: ListenerRegistration? = null
+    try {
+      val query = db.collection("conversations")
+        .whereArrayContains("participants", userId)
+
+      listener = query.addSnapshotListener { snapshot, error ->
+        if (error != null) {
+          Log.w("FirestoreChatRepo", "Conversations listener error: ${error.message}")
+          return@addSnapshotListener
+        }
+        if (snapshot != null) {
+          val list = snapshot.documents.mapNotNull { doc ->
+            try {
+              val data = doc.data ?: return@mapNotNull null
+              val id = doc.id
+              val type = data["type"] as? String ?: "direct"
+              @Suppress("UNCHECKED_CAST")
+              val participants = (data["participants"] as? List<String>) ?: emptyList()
+              @Suppress("UNCHECKED_CAST")
+              val detailsRaw = data["participantDetails"] as? Map<String, Map<String, Any?>> ?: emptyMap()
+              val details = detailsRaw.mapValues { ParticipantInfo.fromMap(it.value) }
+
+              val lastMessage = data["lastMessage"] as? String ?: ""
+              val lastMessageTimestamp = (data["lastMessageTimestamp"] as? Number)?.toLong() ?: 0L
+              val lastMessageSenderId = data["lastMessageSenderId"] as? String ?: ""
+              @Suppress("UNCHECKED_CAST")
+              val unreadCounts = (data["unreadCounts"] as? Map<String, Number>)
+                ?.mapValues { it.value.toInt() } ?: emptyMap()
+
+              val groupName = data["groupName"] as? String ?: ""
+              val groupPhoto = data["groupPhoto"] as? String ?: ""
+              val groupDescription = data["groupDescription"] as? String ?: ""
+              @Suppress("UNCHECKED_CAST")
+              val adminUids = (data["adminUids"] as? List<String>) ?: emptyList()
+              @Suppress("UNCHECKED_CAST")
+              val pinnedBy = (data["pinnedBy"] as? List<String>) ?: emptyList()
+              @Suppress("UNCHECKED_CAST")
+              val mutedBy = (data["mutedBy"] as? List<String>) ?: emptyList()
+              @Suppress("UNCHECKED_CAST")
+              val archivedBy = (data["archivedBy"] as? List<String>) ?: emptyList()
+              val createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L
+              val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L
+
+              Conversation(
+                id = id,
+                type = type,
+                participants = participants,
+                participantDetails = details,
+                lastMessage = lastMessage,
+                lastMessageTimestamp = lastMessageTimestamp,
+                lastMessageSenderId = lastMessageSenderId,
+                unreadCounts = unreadCounts,
+                groupName = groupName,
+                groupPhoto = groupPhoto,
+                groupDescription = groupDescription,
+                adminUids = adminUids,
+                pinnedBy = pinnedBy,
+                mutedBy = mutedBy,
+                archivedBy = archivedBy,
+                createdAt = createdAt,
+                updatedAt = updatedAt
+              )
+            } catch (e: Exception) {
+              null
+            }
+          }.sortedByDescending { it.lastMessageTimestamp }
+          trySend(list)
+        }
+      }
+    } catch (e: Throwable) {
+      Log.e("FirestoreChatRepo", "Failed to start conversations flow", e)
+      trySend(emptyList())
+    }
+
+    awaitClose {
+      try {
+        listener?.remove()
+      } catch (e: Throwable) {
+        // ignore
+      }
+    }
   }
 
   /**
@@ -110,26 +135,45 @@ class FirestoreChatRepository {
       return@callbackFlow
     }
 
-    val query = firestore.collection("conversations")
-      .document(conversationId)
-      .collection("messages")
-      .orderBy("timestamp", Query.Direction.ASCENDING)
-
-    val listener = query.addSnapshotListener { snapshot, error ->
-      if (error != null) {
-        error.printStackTrace()
-        return@addSnapshotListener
-      }
-      if (snapshot != null) {
-        val messages = snapshot.documents.mapNotNull { doc ->
-          val data = doc.data ?: return@mapNotNull null
-          Message.fromMap(data)
-        }
-        trySend(messages)
-      }
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
     }
 
-    awaitClose { listener.remove() }
+    var listener: ListenerRegistration? = null
+    try {
+      val query = db.collection("conversations")
+        .document(conversationId)
+        .collection("messages")
+        .orderBy("timestamp", Query.Direction.ASCENDING)
+
+      listener = query.addSnapshotListener { snapshot, error ->
+        if (error != null) {
+          Log.w("FirestoreChatRepo", "Messages listener error: ${error.message}")
+          return@addSnapshotListener
+        }
+        if (snapshot != null) {
+          val messages = snapshot.documents.mapNotNull { doc ->
+            val data = doc.data ?: return@mapNotNull null
+            Message.fromMap(data)
+          }
+          trySend(messages)
+        }
+      }
+    } catch (e: Throwable) {
+      Log.e("FirestoreChatRepo", "Failed to start messages flow", e)
+      trySend(emptyList())
+    }
+
+    awaitClose {
+      try {
+        listener?.remove()
+      } catch (e: Throwable) {
+        // ignore
+      }
+    }
   }
 
   /**
@@ -142,31 +186,50 @@ class FirestoreChatRepository {
       return@callbackFlow
     }
 
-    val listener = firestore.collection("conversations")
-      .document(conversationId)
-      .collection("typing")
-      .addSnapshotListener { snapshot, _ ->
-        if (snapshot != null) {
-          val now = System.currentTimeMillis()
-          val typers = snapshot.documents.mapNotNull { doc ->
-            val timestamp = doc.getLong("timestamp") ?: 0L
-            val userId = doc.id
-            val name = doc.getString("name") ?: "Someone"
-            if (userId != currentUserId && (now - timestamp) < 5000) {
-              name
-            } else null
-          }
-          trySend(typers)
-        }
-      }
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
 
-    awaitClose { listener.remove() }
+    var listener: ListenerRegistration? = null
+    try {
+      listener = db.collection("conversations")
+        .document(conversationId)
+        .collection("typing")
+        .addSnapshotListener { snapshot, _ ->
+          if (snapshot != null) {
+            val now = System.currentTimeMillis()
+            val typers = snapshot.documents.mapNotNull { doc ->
+              val timestamp = doc.getLong("timestamp") ?: 0L
+              val userId = doc.id
+              val name = doc.getString("name") ?: "Someone"
+              if (userId != currentUserId && (now - timestamp) < 5000) {
+                name
+              } else null
+            }
+            trySend(typers)
+          }
+        }
+    } catch (e: Throwable) {
+      trySend(emptyList())
+    }
+
+    awaitClose {
+      try {
+        listener?.remove()
+      } catch (e: Throwable) {
+        // ignore
+      }
+    }
   }
 
   suspend fun setTyping(conversationId: String, userId: String, userName: String, isTyping: Boolean) {
     if (conversationId.isEmpty() || userId.isEmpty()) return
+    val db = firestore ?: return
     try {
-      val docRef = firestore.collection("conversations")
+      val docRef = db.collection("conversations")
         .document(conversationId)
         .collection("typing")
         .document(userId)
@@ -182,21 +245,22 @@ class FirestoreChatRepository {
   }
 
   /**
-   * Send a real-time message
+   * Send a message to a conversation
    */
   suspend fun sendMessage(
     conversationId: String,
     sender: User,
     text: String,
-    type: String = "text",
+    type: String = "text", // "text", "voice", "image", "file"
     mediaUrl: String = "",
-    voiceDurationSec: Int = 0,
+    mediaDurationSec: Int = 0,
+    mediaSize: Long = 0,
     replyTo: Message? = null
   ): Result<Message> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       val msgId = UUID.randomUUID().toString()
       val now = System.currentTimeMillis()
-
       val message = Message(
         id = msgId,
         conversationId = conversationId,
@@ -206,7 +270,7 @@ class FirestoreChatRepository {
         text = text,
         type = type,
         mediaUrl = mediaUrl,
-        voiceDurationSec = voiceDurationSec,
+        voiceDurationSec = mediaDurationSec,
         timestamp = now,
         delivered = true,
         read = false,
@@ -216,7 +280,7 @@ class FirestoreChatRepository {
       )
 
       // 1. Add message to subcollection
-      firestore.collection("conversations")
+      db.collection("conversations")
         .document(conversationId)
         .collection("messages")
         .document(msgId)
@@ -231,7 +295,7 @@ class FirestoreChatRepository {
         else -> text
       }
 
-      firestore.collection("conversations").document(conversationId).update(
+      db.collection("conversations").document(conversationId).update(
         mapOf(
           "lastMessage" to snippet,
           "lastMessageTimestamp" to now,
@@ -251,9 +315,10 @@ class FirestoreChatRepository {
    * Get or create a direct 1-on-1 conversation
    */
   suspend fun getOrCreateDirectConversation(currentUser: User, targetUser: User): Result<Conversation> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       // Look for existing conversation with these two participants
-      val existing = firestore.collection("conversations")
+      val existing = db.collection("conversations")
         .whereEqualTo("type", "direct")
         .whereArrayContains("participants", currentUser.uid)
         .get()
@@ -300,7 +365,7 @@ class FirestoreChatRepository {
         "updatedAt" to now
       )
 
-      firestore.collection("conversations").document(convId).set(data).await()
+      db.collection("conversations").document(convId).set(data).await()
       val newConv = Conversation(
         id = convId,
         type = "direct",
@@ -326,6 +391,7 @@ class FirestoreChatRepository {
     groupPhoto: String,
     memberUsers: List<User>
   ): Result<Conversation> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       val convId = UUID.randomUUID().toString()
       val now = System.currentTimeMillis()
@@ -353,7 +419,7 @@ class FirestoreChatRepository {
         "updatedAt" to now
       )
 
-      firestore.collection("conversations").document(convId).set(data).await()
+      db.collection("conversations").document(convId).set(data).await()
       val conv = Conversation(
         id = convId,
         type = "group",
@@ -376,13 +442,14 @@ class FirestoreChatRepository {
    * Add emoji reaction
    */
   suspend fun addReaction(conversationId: String, messageId: String, userId: String, emoji: String) {
+    val db = firestore ?: return
     try {
-      val docRef = firestore.collection("conversations")
+      val docRef = db.collection("conversations")
         .document(conversationId)
         .collection("messages")
         .document(messageId)
 
-      firestore.runTransaction { transaction ->
+      db.runTransaction { transaction ->
         val snapshot = transaction.get(docRef)
         @Suppress("UNCHECKED_CAST")
         val reactions = (snapshot.get("reactions") as? Map<String, List<String>>)
@@ -406,8 +473,9 @@ class FirestoreChatRepository {
    * Mark messages as read
    */
   suspend fun markAsRead(conversationId: String, userId: String) {
+    val db = firestore ?: return
     try {
-      firestore.collection("conversations").document(conversationId).update(
+      db.collection("conversations").document(conversationId).update(
         "unreadCounts.$userId", 0
       ).await()
     } catch (e: Exception) {
@@ -421,37 +489,33 @@ class FirestoreChatRepository {
   suspend fun searchUsers(query: String, currentUserId: String): List<User> {
     val clean = query.trim().lowercase()
     if (clean.isEmpty()) return emptyList()
+    val db = firestore ?: return emptyList()
 
     return try {
       val results = mutableListOf<User>()
-      val bare = clean.removePrefix("@")
-      val withAt = "@$bare"
-      val searchPrefixes = setOf(clean, bare, withAt).filter { it.isNotEmpty() }
 
       // 1. Search by username prefix
-      for (prefix in searchPrefixes) {
-        val usernameQuery = firestore.collection("users")
-          .whereGreaterThanOrEqualTo("username", prefix)
-          .whereLessThanOrEqualTo("username", prefix + "\uf8ff")
-          .limit(20)
-          .get()
-          .await()
+      val usernameQuery = db.collection("users")
+        .whereGreaterThanOrEqualTo("username", clean)
+        .whereLessThanOrEqualTo("username", clean + "\uf8ff")
+        .limit(20)
+        .get()
+        .await()
 
-        for (doc in usernameQuery.documents) {
-          val user = User.fromMap(doc.data ?: continue)
-          if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
-            results.add(user)
-          }
+      for (doc in usernameQuery.documents) {
+        val user = User.fromMap(doc.data ?: continue)
+        if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
+          results.add(user)
         }
       }
 
       // 2. Search by displayName (case-insensitive local check on prefix match)
       if (results.size < 10) {
-        val allUsers = firestore.collection("users").limit(30).get().await()
+        val allUsers = db.collection("users").limit(30).get().await()
         for (doc in allUsers.documents) {
           val user = User.fromMap(doc.data ?: continue)
           if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
-            if (user.displayName.lowercase().contains(bare) || user.email.lowercase().contains(bare)) {
+            if (user.displayName.lowercase().contains(clean) || user.email.lowercase().contains(clean)) {
               results.add(user)
             }
           }
@@ -459,7 +523,7 @@ class FirestoreChatRepository {
       }
       results
     } catch (e: Exception) {
-      e.printStackTrace()
+      Log.w("FirestoreChatRepo", "searchUsers error: ${e.message}")
       emptyList()
     }
   }
@@ -468,8 +532,9 @@ class FirestoreChatRepository {
    * Pin or unpin conversation
    */
   suspend fun togglePin(conversationId: String, userId: String, isPinned: Boolean) {
+    val db = firestore ?: return
     try {
-      val docRef = firestore.collection("conversations").document(conversationId)
+      val docRef = db.collection("conversations").document(conversationId)
       val snapshot = docRef.get().await()
       @Suppress("UNCHECKED_CAST")
       val pinned = (snapshot.get("pinnedBy") as? List<String>)?.toMutableList() ?: mutableListOf()
@@ -488,8 +553,9 @@ class FirestoreChatRepository {
    * Block / Report User
    */
   suspend fun blockUser(currentUserId: String, targetUserId: String) {
+    val db = firestore ?: return
     try {
-      firestore.collection("blockedUsers")
+      db.collection("blockedUsers")
         .document(currentUserId)
         .collection("blocked")
         .document(targetUserId)
@@ -501,9 +567,10 @@ class FirestoreChatRepository {
   }
 
   suspend fun reportUser(reporterId: String, reportedUserId: String, reason: String) {
+    val db = firestore ?: return
     try {
       val reportId = UUID.randomUUID().toString()
-      firestore.collection("reports").document(reportId).set(
+      db.collection("reports").document(reportId).set(
         mapOf(
           "reportId" to reportId,
           "reporterId" to reporterId,
@@ -521,27 +588,47 @@ class FirestoreChatRepository {
    * Updates / Status Stories
    */
   fun getStatusUpdatesFlow(): Flow<List<StatusUpdate>> = callbackFlow {
-    val query = firestore.collection("updates")
-      .orderBy("timestamp", Query.Direction.DESCENDING)
-      .limit(30)
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
 
-    val listener = query.addSnapshotListener { snapshot, error ->
-      if (error != null) {
-        error.printStackTrace()
-        return@addSnapshotListener
-      }
-      if (snapshot != null) {
-        val list = snapshot.documents.mapNotNull { doc ->
-          val data = doc.data ?: return@mapNotNull null
-          StatusUpdate.fromMap(data)
+    var listener: ListenerRegistration? = null
+    try {
+      val query = db.collection("updates")
+        .orderBy("timestamp", Query.Direction.DESCENDING)
+        .limit(30)
+
+      listener = query.addSnapshotListener { snapshot, error ->
+        if (error != null) {
+          Log.w("FirestoreChatRepo", "Status updates error: ${error.message}")
+          return@addSnapshotListener
         }
-        trySend(list)
+        if (snapshot != null) {
+          val list = snapshot.documents.mapNotNull { doc ->
+            val data = doc.data ?: return@mapNotNull null
+            StatusUpdate.fromMap(data)
+          }
+          trySend(list)
+        }
+      }
+    } catch (e: Throwable) {
+      trySend(emptyList())
+    }
+
+    awaitClose {
+      try {
+        listener?.remove()
+      } catch (e: Throwable) {
+        // ignore
       }
     }
-    awaitClose { listener.remove() }
   }
 
   suspend fun postStatusUpdate(user: User, text: String, imageUrl: String = ""): Result<StatusUpdate> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       val id = UUID.randomUUID().toString()
       val update = StatusUpdate(
@@ -553,7 +640,7 @@ class FirestoreChatRepository {
         imageUrl = imageUrl,
         timestamp = System.currentTimeMillis()
       )
-      firestore.collection("updates").document(id).set(update.toMap()).await()
+      db.collection("updates").document(id).set(update.toMap()).await()
       Result.success(update)
     } catch (e: Exception) {
       Result.failure(e)
@@ -570,22 +657,42 @@ class FirestoreChatRepository {
       return@callbackFlow
     }
 
-    val query = firestore.collection("calls")
-      .whereEqualTo("receiverId", userId)
-      .whereEqualTo("status", "ringing")
+    val db = firestore
+    if (db == null) {
+      trySend(null)
+      awaitClose { }
+      return@callbackFlow
+    }
 
-    val listener = query.addSnapshotListener { snapshot, _ ->
-      val callDoc = snapshot?.documents?.firstOrNull()
-      if (callDoc != null && callDoc.data != null) {
-        trySend(CallSession.fromMap(callDoc.data!!))
-      } else {
-        trySend(null)
+    var listener: ListenerRegistration? = null
+    try {
+      val query = db.collection("calls")
+        .whereEqualTo("receiverId", userId)
+        .whereEqualTo("status", "ringing")
+
+      listener = query.addSnapshotListener { snapshot, _ ->
+        val callDoc = snapshot?.documents?.firstOrNull()
+        if (callDoc != null && callDoc.data != null) {
+          trySend(CallSession.fromMap(callDoc.data!!))
+        } else {
+          trySend(null)
+        }
+      }
+    } catch (e: Throwable) {
+      trySend(null)
+    }
+
+    awaitClose {
+      try {
+        listener?.remove()
+      } catch (e: Throwable) {
+        // ignore
       }
     }
-    awaitClose { listener.remove() }
   }
 
   suspend fun initiateCall(caller: User, receiver: User, type: String): Result<CallSession> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       val callId = UUID.randomUUID().toString()
       val call = CallSession(
@@ -600,7 +707,7 @@ class FirestoreChatRepository {
         status = "ringing",
         createdAt = System.currentTimeMillis()
       )
-      firestore.collection("calls").document(callId).set(call.toMap()).await()
+      db.collection("calls").document(callId).set(call.toMap()).await()
       Result.success(call)
     } catch (e: Exception) {
       Result.failure(e)
@@ -608,8 +715,9 @@ class FirestoreChatRepository {
   }
 
   suspend fun updateCallStatus(callId: String, status: String) {
+    val db = firestore ?: return
     try {
-      firestore.collection("calls").document(callId).update("status", status).await()
+      db.collection("calls").document(callId).update("status", status).await()
     } catch (e: Exception) {
       // ignore
     }

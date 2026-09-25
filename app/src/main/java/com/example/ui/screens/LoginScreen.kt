@@ -63,7 +63,9 @@ import com.example.viewmodel.PinggoViewModel
 @Composable
 fun LoginScreen(
   viewModel: PinggoViewModel,
-  onLoggedIn: () -> Unit
+  onLoggedIn: () -> Unit,
+  onOpenDiagnostics: () -> Unit = {},
+  onExploreDemo: () -> Unit = {}
 ) {
   val isLoading by viewModel.isAuthLoading.collectAsState()
   val authError by viewModel.authError.collectAsState()
@@ -266,6 +268,42 @@ fun LoginScreen(
             color = Color(0xFFFF6B6B),
             fontSize = 12.sp,
             textAlign = TextAlign.Center
+          )
+          Spacer(modifier = Modifier.height(8.dp))
+          Text(
+            text = "Open Firebase Diagnostic & Setup Guide",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = PinggoMint,
+            modifier = Modifier.clickable { onOpenDiagnostics() }
+          )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Demo / Diagnostics Footer Row
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "✨ Explore Demo Mode",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = PinggoMintUltraLight,
+            modifier = Modifier.clickable {
+              viewModel.enterGuestMode()
+              onExploreDemo()
+            }
+          )
+
+          Text(
+            text = "🛠️ Diagnostics",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.clickable { onOpenDiagnostics() }
           )
         }
       }

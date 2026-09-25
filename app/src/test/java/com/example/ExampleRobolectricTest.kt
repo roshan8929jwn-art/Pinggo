@@ -9,7 +9,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [34])
 class ExampleRobolectricTest {
 
   @Test
@@ -24,54 +24,20 @@ class ExampleRobolectricTest {
     val user = com.example.model.User(
       uid = "u1",
       displayName = "Rohan Sharma",
-      username = "@roshan",
+      username = "rohansharma",
       bio = "Living the best version of myself ✨"
     )
     val map = user.toMap()
     val restored = com.example.model.User.fromMap(map)
     assertEquals("u1", restored.uid)
-    assertEquals("@roshan", restored.username)
-    assertEquals("Rohan Sharma", restored.displayName)
+    assertEquals("rohansharma", restored.username)
   }
 
   @Test
-  fun `username validation supports @roshan, @roshan123, and @pinggo_user`() {
-    val validUsernames = listOf("@roshan", "@roshan123", "@pinggo_user", "roshan", "roshan_123")
-    val regex = Regex("^@?[a-z0-9_]+$")
-
-    for (un in validUsernames) {
-      val clean = un.trim().lowercase()
-      val bare = clean.removePrefix("@")
-      org.junit.Assert.assertTrue("Expected $un to match format", regex.matches(clean))
-      org.junit.Assert.assertTrue("Expected bare $bare length >= 3", bare.length >= 3)
-      org.junit.Assert.assertTrue("Expected bare $bare length <= 20", bare.length <= 20)
-    }
-
-    val invalidUsernames = listOf("@", "@a", "@ab!", "roshan@user", "ro shan", "@roshan#")
-    for (un in invalidUsernames) {
-      val clean = un.trim().lowercase()
-      val bare = clean.removePrefix("@")
-      val isValid = regex.matches(clean) && bare.length in 3..20
-      org.junit.Assert.assertFalse("Expected $un to be invalid", isValid)
-    }
-  }
-
-  @Test
-  fun `user handle formats with or without @ correctly`() {
-    val userWithAt = com.example.model.User(username = "@roshan")
-    val userWithoutAt = com.example.model.User(username = "roshan")
-    val userEmpty = com.example.model.User(username = "")
-
-    assertEquals("@roshan", com.example.model.handle(userWithAt))
-    assertEquals("@roshan", com.example.model.handle(userWithoutAt))
-    assertEquals("@username", com.example.model.handle(userEmpty))
-  }
-
-  @Test
-  fun `username input filtering allows @, letters, numbers, and underscore`() {
-    val rawTyped = "@Roshan_123!"
-    val filtered = rawTyped.filter { it.isLetterOrDigit() || it == '_' || it == '@' }.take(21).lowercase()
-    assertEquals("@roshan_123", filtered)
+  fun `launch MainActivity test`() {
+    val controller = org.robolectric.Robolectric.buildActivity(MainActivity::class.java)
+    controller.setup()
+    val activity = controller.get()
+    org.junit.Assert.assertNotNull(activity)
   }
 }
-

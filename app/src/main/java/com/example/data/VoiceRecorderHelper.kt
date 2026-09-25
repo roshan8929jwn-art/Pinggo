@@ -31,7 +31,13 @@ class VoiceRecorderHelper(private val context: Context) {
   private val _playProgress = MutableStateFlow(0f)
   val playProgress: StateFlow<Float> = _playProgress.asStateFlow()
 
-  private val handler = Handler(Looper.getMainLooper())
+  private val handler: Handler by lazy {
+    try {
+      Handler(Looper.getMainLooper())
+    } catch (e: Throwable) {
+      Handler(Looper.myLooper() ?: Looper.getMainLooper())
+    }
+  }
   private var durationRunnable: Runnable? = null
   private var progressRunnable: Runnable? = null
 

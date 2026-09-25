@@ -13,8 +13,10 @@ import com.example.model.Conversation
 import com.example.model.Message
 import com.example.model.StatusUpdate
 import com.example.model.User
-import com.example.model.handle
 import com.example.ui.theme.AppThemeMode
+import com.example.model.ParticipantInfo
+import com.example.util.FirebaseDiagnosticInfo
+import com.example.util.FirebaseInitializer
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -32,9 +35,18 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   val storageRepo = FirebaseStorageRepository()
   val voiceHelper = VoiceRecorderHelper(application)
 
+  val firebaseDiagnostic: StateFlow<FirebaseDiagnosticInfo> = FirebaseInitializer.diagnostic
+
+  private val _isGuestMode = MutableStateFlow(false)
+  val isGuestMode: StateFlow<Boolean> = _isGuestMode.asStateFlow()
+
+  private val _guestProfile = MutableStateFlow<User?>(null)
+
   // Auth & Profile
   val currentUser: StateFlow<FirebaseUser?> = authRepo.currentUser
-  val userProfile: StateFlow<User?> = authRepo.userProfile
+  val userProfile: StateFlow<User?> = combine(authRepo.userProfile, _guestProfile) { authUser, guest ->
+    authUser ?: guest
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
   private val _isAuthLoading = MutableStateFlow(false)
   val isAuthLoading: StateFlow<Boolean> = _isAuthLoading.asStateFlow()
@@ -113,6 +125,8 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private var incomingCallJob: Job? = null
   private var callTimerJob: Job? = null
 
+  private var statusUpdatesJob: Job? = null
+
   init {
     viewModelScope.launch {
       currentUser.collect { user ->
@@ -120,17 +134,64 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           authRepo.loadUserProfile(user.uid)
           listenToConversations(user.uid)
           listenToIncomingCalls(user.uid)
-        } else {
+          listenToStatusUpdates()
+        } else if (!_isGuestMode.value) {
           _conversations.value = emptyList()
           _activeConversation.value = null
           _activeMessages.value = emptyList()
+          _statusUpdates.value = emptyList()
         }
       }
     }
+  }
 
-    viewModelScope.launch {
+  private fun listenToStatusUpdates() {
+    statusUpdatesJob?.cancel()
+    statusUpdatesJob = viewModelScope.launch {
       chatRepo.getStatusUpdatesFlow().collect { list ->
         _statusUpdates.value = list
+      }
+    }
+  }
+
+  fun enterGuestMode() {
+    _isGuestMode.value = true
+    val guest = User(
+      uid = "guest_pinggo_user",
+      displayName = "Pinggo Explorer",
+      username = "pinggouser",
+      email = "explorer@pinggo.internal",
+      bio = "Exploring the Pinggo Liquid Glass Experience ✨",
+      createdAt = System.currentTimeMillis(),
+      isOnline = true
+    )
+    _guestProfile.value = guest
+
+    val demoDetails = mapOf(
+      guest.uid to ParticipantInfo(guest.uid, guest.displayName, guest.username, guest.photoURL),
+      "ai_sparky" to ParticipantInfo("ai_sparky", "Pinggo AI Assistant", "pinggo_ai", "")
+    )
+    _conversations.value = listOf(
+      Conversation(
+        id = "conv_ai_demo",
+        groupName = "Pinggo AI Assistant",
+        type = "ai",
+        participants = listOf(guest.uid, "ai_sparky"),
+        participantDetails = demoDetails,
+        lastMessage = "Welcome to Pinggo! You are exploring in Demo Mode. Connect Firebase in Firebase Console to enable global cloud sync!",
+        lastMessageTimestamp = System.currentTimeMillis(),
+        unreadCounts = mapOf(guest.uid to 0)
+      )
+    )
+  }
+
+  fun retryFirebaseInitialization() {
+    viewModelScope.launch {
+      FirebaseInitializer.initialize(getApplication())
+      currentUser.value?.let { user ->
+        authRepo.loadUserProfile(user.uid)
+        listenToConversations(user.uid)
+        listenToStatusUpdates()
       }
     }
   }
@@ -269,7 +330,15 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun signOut() {
     viewModelScope.launch {
-      authRepo.signOut()
+      if (_isGuestMode.value) {
+        _isGuestMode.value = false
+        _guestProfile.value = null
+        _conversations.value = emptyList()
+        _activeConversation.value = null
+        _activeMessages.value = emptyList()
+      } else {
+        authRepo.signOut()
+      }
       showToast("Signed out")
     }
   }
@@ -286,6 +355,21 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   fun openConversation(conversation: Conversation) {
     _activeConversation.value = conversation
     val user = userProfile.value ?: return
+
+    if (conversation.id == "conv_ai_demo" && _activeMessages.value.isEmpty()) {
+      _activeMessages.value = listOf(
+        Message(
+          id = "msg_ai_welcome",
+          conversationId = conversation.id,
+          senderId = "ai_sparky",
+          senderName = "Pinggo AI Assistant",
+          text = "Welcome to Pinggo! You are exploring in Demo Mode. Connect Firebase in Firebase Console to enable global cloud sync!",
+          timestamp = System.currentTimeMillis()
+        )
+      )
+      return
+    }
+
     viewModelScope.launch {
       chatRepo.markAsRead(conversation.id, user.uid)
     }
@@ -334,6 +418,32 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
     val reply = _replyingTo.value
     _replyingTo.value = null
+
+    if (conv.id == "conv_ai_demo" || _isGuestMode.value) {
+      val msgId = java.util.UUID.randomUUID().toString()
+      val msg = Message(
+        id = msgId,
+        conversationId = conv.id,
+        senderId = user.uid,
+        senderName = user.displayName,
+        text = trimmed,
+        timestamp = System.currentTimeMillis()
+      )
+      _activeMessages.value = _activeMessages.value + msg
+      viewModelScope.launch {
+        delay(800)
+        val aiReply = Message(
+          id = java.util.UUID.randomUUID().toString(),
+          conversationId = conv.id,
+          senderId = "ai_sparky",
+          senderName = "Pinggo AI Assistant",
+          text = "I received your message: \"$trimmed\"! The Pinggo Liquid Glass interface is running smoothly.",
+          timestamp = System.currentTimeMillis()
+        )
+        _activeMessages.value = _activeMessages.value + aiReply
+      }
+      return
+    }
 
     viewModelScope.launch {
       chatRepo.sendMessage(
@@ -391,7 +501,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           text = "Voice message ($duration s)",
           type = "voice",
           mediaUrl = downloadUrl,
-          voiceDurationSec = duration
+          mediaDurationSec = duration
         )
       }.onFailure {
         showToast("Failed to upload voice note")
@@ -472,7 +582,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     viewModelScope.launch {
       chatRepo.blockUser(me.uid, targetUser.uid)
       _previewUser.value = null
-      showToast("Blocked ${targetUser.handle}")
+      showToast("Blocked @${targetUser.username}")
     }
   }
 

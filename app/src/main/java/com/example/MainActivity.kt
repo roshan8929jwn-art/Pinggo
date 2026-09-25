@@ -4,7 +4,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -31,6 +33,7 @@ import com.example.ui.components.GlassToast
 import com.example.ui.screens.CallScreen
 import com.example.ui.screens.ChatScreen
 import com.example.ui.screens.CreateGroupScreen
+import com.example.ui.screens.FirebaseDiagnosticScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.ProfileSetupScreen
@@ -47,7 +50,8 @@ enum class PinggoScreen {
   CHAT,
   USER_SEARCH,
   CREATE_GROUP,
-  SETTINGS
+  SETTINGS,
+  DIAGNOSTIC
 }
 
 class MainActivity : ComponentActivity() {
@@ -55,7 +59,11 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
+    try {
+      enableEdgeToEdge()
+    } catch (t: Throwable) {
+      Log.w("MainActivity", "EdgeToEdge warning: ${t.message}")
+    }
 
     setContent {
       val themeMode by viewModel.themeMode.collectAsState()
@@ -64,6 +72,8 @@ class MainActivity : ComponentActivity() {
       val activeConversation by viewModel.activeConversation.collectAsState()
       val activeCall by viewModel.activeCall.collectAsState()
       val toastMessage by viewModel.toastMessage.collectAsState()
+      val diagnostic by viewModel.firebaseDiagnostic.collectAsState()
+      val isGuestMode by viewModel.isGuestMode.collectAsState()
 
       var currentScreen by remember { mutableStateOf(PinggoScreen.SPLASH) }
       var settingsSection by remember { mutableStateOf("general") }
@@ -89,8 +99,8 @@ class MainActivity : ComponentActivity() {
         }
       }
 
-      LaunchedEffect(currentUser) {
-        if (currentUser == null && currentScreen != PinggoScreen.SPLASH && currentScreen != PinggoScreen.LOGIN) {
+      LaunchedEffect(currentUser, isGuestMode) {
+        if (currentUser == null && !isGuestMode && currentScreen != PinggoScreen.SPLASH && currentScreen != PinggoScreen.LOGIN && currentScreen != PinggoScreen.DIAGNOSTIC) {
           currentScreen = PinggoScreen.LOGIN
         }
       }
@@ -106,9 +116,15 @@ class MainActivity : ComponentActivity() {
                 SplashScreen(
                   onReady = {
                     currentScreen = when {
-                      currentUser == null -> PinggoScreen.LOGIN
-                      userProfile == null || userProfile?.username.isNullOrEmpty() -> PinggoScreen.PROFILE_SETUP
-                      else -> PinggoScreen.HOME
+                      currentUser != null -> {
+                        if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
+                          PinggoScreen.PROFILE_SETUP
+                        } else {
+                          PinggoScreen.HOME
+                        }
+                      }
+                      isGuestMode -> PinggoScreen.HOME
+                      else -> PinggoScreen.LOGIN
                     }
                   }
                 )
@@ -123,11 +139,20 @@ class MainActivity : ComponentActivity() {
                     } else {
                       PinggoScreen.HOME
                     }
+                  },
+                  onOpenDiagnostics = {
+                    currentScreen = PinggoScreen.DIAGNOSTIC
+                  },
+                  onExploreDemo = {
+                    currentScreen = PinggoScreen.HOME
                   }
                 )
               }
 
               PinggoScreen.PROFILE_SETUP -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.LOGIN
+                }
                 ProfileSetupScreen(
                   viewModel = viewModel,
                   onProfileCreated = {
@@ -156,6 +181,10 @@ class MainActivity : ComponentActivity() {
               }
 
               PinggoScreen.CHAT -> {
+                BackHandler {
+                  viewModel.closeConversation()
+                  currentScreen = PinggoScreen.HOME
+                }
                 activeConversation?.let { conv ->
                   ChatScreen(
                     viewModel = viewModel,
@@ -174,6 +203,9 @@ class MainActivity : ComponentActivity() {
               }
 
               PinggoScreen.USER_SEARCH -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.HOME
+                }
                 com.example.ui.screens.UserSearchScreen(
                   viewModel = viewModel,
                   onBack = { currentScreen = PinggoScreen.HOME },
@@ -184,6 +216,9 @@ class MainActivity : ComponentActivity() {
               }
 
               PinggoScreen.CREATE_GROUP -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.HOME
+                }
                 CreateGroupScreen(
                   viewModel = viewModel,
                   onBack = { currentScreen = PinggoScreen.HOME },
@@ -194,10 +229,29 @@ class MainActivity : ComponentActivity() {
               }
 
               PinggoScreen.SETTINGS -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.HOME
+                }
                 SettingsScreen(
                   viewModel = viewModel,
                   section = settingsSection,
                   onBack = { currentScreen = PinggoScreen.HOME }
+                )
+              }
+
+              PinggoScreen.DIAGNOSTIC -> {
+                BackHandler {
+                  currentScreen = if (currentUser != null || isGuestMode) PinggoScreen.HOME else PinggoScreen.LOGIN
+                }
+                FirebaseDiagnosticScreen(
+                  diagnostic = diagnostic,
+                  onRetry = {
+                    viewModel.retryFirebaseInitialization()
+                  },
+                  onContinueOffline = {
+                    viewModel.enterGuestMode()
+                    currentScreen = PinggoScreen.HOME
+                  }
                 )
               }
             }
