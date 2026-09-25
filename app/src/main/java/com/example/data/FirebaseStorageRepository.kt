@@ -53,4 +53,19 @@ class FirebaseStorageRepository {
       Result.failure(e)
     }
   }
+
+  suspend fun uploadStatusMedia(userId: String, mediaUri: Uri, isVideo: Boolean): Result<String> {
+    return try {
+      val s = storage ?: return Result.failure(IllegalStateException("Firebase Storage is not initialized"))
+      val ext = if (isVideo) "mp4" else "jpg"
+      val filename = "status_${System.currentTimeMillis()}.$ext"
+      val ref = s.reference.child("status_media/$userId/$filename")
+      ref.putFile(mediaUri).await()
+      val downloadUrl = ref.downloadUrl.await().toString()
+      Result.success(downloadUrl)
+    } catch (e: Exception) {
+      e.printStackTrace()
+      Result.failure(e)
+    }
+  }
 }

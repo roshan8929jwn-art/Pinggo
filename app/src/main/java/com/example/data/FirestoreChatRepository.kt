@@ -316,6 +316,16 @@ class FirestoreChatRepository {
    */
   suspend fun getOrCreateDirectConversation(currentUser: User, targetUser: User): Result<Conversation> {
     val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
+    if (currentUser.uid == targetUser.uid) {
+      return Result.failure(IllegalArgumentException("You cannot message yourself"))
+    }
+    if (currentUser.blockedUsers.contains(targetUser.uid)) {
+      return Result.failure(IllegalStateException("You have blocked this user. Unblock them in Privacy Settings to chat."))
+    }
+    if (targetUser.blockedUsers.contains(currentUser.uid)) {
+      return Result.failure(IllegalStateException("Unable to start chat with this user."))
+    }
+
     return try {
       // Look for existing conversation with these two participants
       val existing = db.collection("conversations")
@@ -472,12 +482,28 @@ class FirestoreChatRepository {
   /**
    * Mark messages as read
    */
-  suspend fun markAsRead(conversationId: String, userId: String) {
+  suspend fun markAsRead(conversationId: String, userId: String, sendReadReceipts: Boolean = true) {
     val db = firestore ?: return
     try {
       db.collection("conversations").document(conversationId).update(
         "unreadCounts.$userId", 0
       ).await()
+
+      if (sendReadReceipts) {
+        val messagesSnapshot = db.collection("conversations").document(conversationId)
+          .collection("messages")
+          .whereEqualTo("read", false)
+          .limit(30)
+          .get()
+          .await()
+
+        for (doc in messagesSnapshot.documents) {
+          val senderId = doc.getString("senderId")
+          if (senderId != userId) {
+            doc.reference.update(mapOf("read" to true)).await()
+          }
+        }
+      }
     } catch (e: Exception) {
       // ignore
     }
@@ -487,7 +513,7 @@ class FirestoreChatRepository {
    * Search registered Pinggo users
    */
   suspend fun searchUsers(query: String, currentUserId: String): List<User> {
-    val clean = query.trim().lowercase()
+    val clean = query.trim().lowercase().removePrefix("@")
     if (clean.isEmpty()) return emptyList()
     val db = firestore ?: return emptyList()
 
@@ -599,7 +625,7 @@ class FirestoreChatRepository {
     try {
       val query = db.collection("updates")
         .orderBy("timestamp", Query.Direction.DESCENDING)
-        .limit(30)
+        .limit(40)
 
       listener = query.addSnapshotListener { snapshot, error ->
         if (error != null) {
@@ -627,7 +653,12 @@ class FirestoreChatRepository {
     }
   }
 
-  suspend fun postStatusUpdate(user: User, text: String, imageUrl: String = ""): Result<StatusUpdate> {
+  suspend fun postStatusUpdate(
+    user: User,
+    text: String,
+    imageUrl: String = "",
+    mediaType: String = "image"
+  ): Result<StatusUpdate> {
     val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       val id = UUID.randomUUID().toString()
@@ -638,12 +669,109 @@ class FirestoreChatRepository {
         userPhoto = user.photoURL,
         text = text,
         imageUrl = imageUrl,
+        mediaType = mediaType,
         timestamp = System.currentTimeMillis()
       )
       db.collection("updates").document(id).set(update.toMap()).await()
       Result.success(update)
     } catch (e: Exception) {
       Result.failure(e)
+    }
+  }
+
+  suspend fun recordStatusView(updateId: String, viewer: User) {
+    if (updateId.isEmpty() || viewer.uid.isEmpty()) return
+    val db = firestore ?: return
+    try {
+      val now = System.currentTimeMillis()
+      db.collection("updates").document(updateId).update("viewers.${viewer.uid}", now).await()
+      db.collection("updates").document(updateId)
+        .collection("viewers").document(viewer.uid)
+        .set(
+          mapOf(
+            "uid" to viewer.uid,
+            "displayName" to viewer.displayName,
+            "username" to viewer.username,
+            "photoURL" to viewer.photoURL,
+            "viewedAt" to now
+          )
+        ).await()
+    } catch (e: Exception) {
+      // ignore
+    }
+  }
+
+  suspend fun getStatusViewers(updateId: String): List<com.example.model.StatusViewer> {
+    val db = firestore ?: return emptyList()
+    return try {
+      val snapshot = db.collection("updates").document(updateId)
+        .collection("viewers")
+        .orderBy("viewedAt", Query.Direction.DESCENDING)
+        .get().await()
+
+      snapshot.documents.mapNotNull { doc ->
+        val data = doc.data ?: return@mapNotNull null
+        com.example.model.StatusViewer(
+          uid = data["uid"] as? String ?: doc.id,
+          displayName = data["displayName"] as? String ?: "",
+          username = data["username"] as? String ?: "",
+          photoURL = data["photoURL"] as? String ?: "",
+          viewedAt = (data["viewedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
+        )
+      }
+    } catch (e: Exception) {
+      emptyList()
+    }
+  }
+
+  /**
+   * Real Call History (incoming and outgoing)
+   */
+  fun getCallHistoryFlow(userId: String): Flow<List<CallSession>> = callbackFlow {
+    if (userId.isEmpty()) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
+
+    var listener: ListenerRegistration? = null
+    try {
+      // Listen to calls where current user was caller or receiver
+      listener = db.collection("calls")
+        .orderBy("createdAt", Query.Direction.DESCENDING)
+        .limit(50)
+        .addSnapshotListener { snapshot, error ->
+          if (error != null) {
+            Log.w("FirestoreChatRepo", "Call history listener error: ${error.message}")
+            return@addSnapshotListener
+          }
+          if (snapshot != null) {
+            val list = snapshot.documents.mapNotNull { doc ->
+              val data = doc.data ?: return@mapNotNull null
+              val session = CallSession.fromMap(data)
+              if (session.callerId == userId || session.receiverId == userId) {
+                session
+              } else null
+            }
+            trySend(list)
+          }
+        }
+    } catch (e: Throwable) {
+      trySend(emptyList())
+    }
+
+    awaitClose {
+      try {
+        listener?.remove()
+      } catch (e: Throwable) {
+        // ignore
+      }
     }
   }
 
@@ -714,10 +842,14 @@ class FirestoreChatRepository {
     }
   }
 
-  suspend fun updateCallStatus(callId: String, status: String) {
+  suspend fun updateCallStatus(callId: String, status: String, durationSec: Int = 0) {
     val db = firestore ?: return
     try {
-      db.collection("calls").document(callId).update("status", status).await()
+      val updates = mutableMapOf<String, Any>("status" to status)
+      if (durationSec > 0) {
+        updates["durationSec"] = durationSec
+      }
+      db.collection("calls").document(callId).update(updates).await()
     } catch (e: Exception) {
       // ignore
     }

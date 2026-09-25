@@ -115,6 +115,14 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private val _statusUpdates = MutableStateFlow<List<StatusUpdate>>(emptyList())
   val statusUpdates: StateFlow<List<StatusUpdate>> = _statusUpdates.asStateFlow()
 
+  // Real Call History
+  private val _callHistory = MutableStateFlow<List<CallSession>>(emptyList())
+  val callHistory: StateFlow<List<CallSession>> = _callHistory.asStateFlow()
+
+  // Blocked Users
+  private val _blockedUsersList = MutableStateFlow<List<User>>(emptyList())
+  val blockedUsersList: StateFlow<List<User>> = _blockedUsersList.asStateFlow()
+
   // Toast / Status Message
   private val _toastMessage = MutableStateFlow<String?>(null)
   val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
@@ -124,7 +132,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private var typingJob: Job? = null
   private var incomingCallJob: Job? = null
   private var callTimerJob: Job? = null
-
+  private var callHistoryJob: Job? = null
   private var statusUpdatesJob: Job? = null
 
   init {
@@ -134,12 +142,15 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           authRepo.loadUserProfile(user.uid)
           listenToConversations(user.uid)
           listenToIncomingCalls(user.uid)
+          listenToCallHistory(user.uid)
           listenToStatusUpdates()
         } else if (!_isGuestMode.value) {
           _conversations.value = emptyList()
           _activeConversation.value = null
           _activeMessages.value = emptyList()
           _statusUpdates.value = emptyList()
+          _callHistory.value = emptyList()
+          _blockedUsersList.value = emptyList()
         }
       }
     }
@@ -595,6 +606,52 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  fun updateProfile(
+    displayName: String,
+    username: String,
+    bio: String,
+    photoUri: Uri?,
+    onComplete: (Boolean, String?) -> Unit
+  ) {
+    val user = userProfile.value ?: run {
+      onComplete(false, "No active user")
+      return
+    }
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      var photoUrl = user.photoURL
+      if (photoUri != null) {
+        val uploadRes = storageRepo.uploadAvatar(user.uid, photoUri)
+        if (uploadRes.isSuccess) {
+          photoUrl = uploadRes.getOrNull() ?: photoUrl
+        } else {
+          _isAuthLoading.value = false
+          val msg = "Photo upload failed: ${uploadRes.exceptionOrNull()?.message}"
+          showToast(msg)
+          onComplete(false, msg)
+          return@launch
+        }
+      }
+
+      val res = authRepo.updateUserProfileWithUsernameChange(
+        displayName = displayName.trim(),
+        newUsername = username.trim(),
+        bio = bio.trim(),
+        photoUrl = photoUrl
+      )
+
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        showToast("Profile updated successfully! ✨")
+        onComplete(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Failed to update profile"
+        showToast(err)
+        onComplete(false, err)
+      }
+    }
+  }
+
   fun postStatus(text: String) {
     val me = userProfile.value ?: return
     if (text.trim().isEmpty()) return
@@ -604,6 +661,234 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  fun uploadStatusMedia(
+    mediaUri: Uri,
+    isVideo: Boolean,
+    caption: String,
+    onProgress: (Boolean) -> Unit,
+    onComplete: (Boolean) -> Unit
+  ) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      onProgress(true)
+      val uploadRes = storageRepo.uploadStatusMedia(me.uid, mediaUri, isVideo)
+      if (uploadRes.isSuccess) {
+        val url = uploadRes.getOrNull() ?: ""
+        chatRepo.postStatusUpdate(me, caption, url, if (isVideo) "video" else "image")
+        onProgress(false)
+        onComplete(true)
+        showToast("Status posted! ✨")
+      } else {
+        onProgress(false)
+        onComplete(false)
+        showToast("Failed to upload status: ${uploadRes.exceptionOrNull()?.message}")
+      }
+    }
+  }
+
+  fun recordStatusView(updateId: String) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      chatRepo.recordStatusView(updateId, me)
+    }
+  }
+
+  fun loadStatusViewers(updateId: String, onResult: (List<com.example.model.StatusViewer>) -> Unit) {
+    viewModelScope.launch {
+      val viewers = chatRepo.getStatusViewers(updateId)
+      onResult(viewers)
+    }
+  }
+
+  // Privacy & Blocking
+  fun updatePrivacySettings(lastSeen: String, readReceipts: Boolean, statusPrivacy: String) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = authRepo.updatePrivacySettings(me.uid, lastSeen, readReceipts, statusPrivacy)
+      if (res.isSuccess) {
+        showToast("Privacy settings updated")
+      } else {
+        showToast("Failed to update privacy settings")
+      }
+    }
+  }
+
+  fun updateNotificationSettings(message: Boolean, group: Boolean, preview: Boolean, call: Boolean) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = authRepo.updateNotificationSettings(me.uid, message, group, preview, call)
+      if (res.isSuccess) {
+        showToast("Notification settings updated")
+      } else {
+        showToast("Failed to update notification settings")
+      }
+    }
+  }
+
+  fun loadBlockedUsers() {
+    val user = userProfile.value ?: return
+    viewModelScope.launch {
+      val users = authRepo.fetchUsersByIds(user.blockedUsers)
+      _blockedUsersList.value = users
+    }
+  }
+
+  fun blockUser(targetUserId: String) {
+    val user = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = authRepo.blockUser(user.uid, targetUserId)
+      if (res.isSuccess) {
+        showToast("User blocked")
+        loadBlockedUsers()
+      } else {
+        showToast("Failed to block user")
+      }
+    }
+  }
+
+  fun unblockUser(targetUserId: String) {
+    val user = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = authRepo.unblockUser(user.uid, targetUserId)
+      if (res.isSuccess) {
+        showToast("User unblocked")
+        loadBlockedUsers()
+      } else {
+        showToast("Failed to unblock user")
+      }
+    }
+  }
+
+  // Guest Account & Auth
+  fun registerGuestAccount(
+    username: String,
+    email: String,
+    password: String,
+    confirmPass: String,
+    displayName: String,
+    onComplete: (Boolean, String?) -> Unit
+  ) {
+    if (password != confirmPass) {
+      val err = "Passwords do not match"
+      _authError.value = err
+      onComplete(false, err)
+      return
+    }
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      _authError.value = null
+      val res = authRepo.registerGuestWithEmailPassword(username, email, password, displayName)
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        showToast("Verification email sent. Please check your inbox and verify your email address.")
+        onComplete(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Registration failed"
+        _authError.value = err
+        onComplete(false, err)
+      }
+    }
+  }
+
+  fun signInWithUsernameOrEmail(
+    identifier: String,
+    password: String,
+    onComplete: (Boolean, String?) -> Unit
+  ) {
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      _authError.value = null
+      val res = authRepo.signInWithUsernameOrEmail(identifier, password)
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        onComplete(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Login failed"
+        _authError.value = err
+        onComplete(false, err)
+      }
+    }
+  }
+
+  fun resendVerificationEmail() {
+    viewModelScope.launch {
+      val res = authRepo.sendEmailVerification()
+      if (res.isSuccess) {
+        showToast("Verification email sent! Check your inbox.")
+      } else {
+        showToast("Failed to send: ${res.exceptionOrNull()?.message}")
+      }
+    }
+  }
+
+  fun sendSignInLinkToEmail(email: String, onResult: (Boolean, String?) -> Unit) {
+    val trimmed = email.trim()
+    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(trimmed).matches()) {
+      val err = "Please enter a valid email address (e.g. name@gmail.com)"
+      _authError.value = err
+      onResult(false, err)
+      return
+    }
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      _authError.value = null
+      val res = authRepo.sendSignInLinkToEmail(trimmed)
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        showToast("Sign-in link sent to $trimmed! Check your inbox.")
+        onResult(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Failed to send sign-in link"
+        _authError.value = err
+        onResult(false, err)
+      }
+    }
+  }
+
+  fun signInWithEmailLink(email: String, emailLink: String, onResult: (Boolean, String?) -> Unit) {
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      _authError.value = null
+      val res = authRepo.signInWithEmailLink(email.trim(), emailLink)
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        showToast("Signed in successfully! Welcome to Pinggo.")
+        onResult(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Failed to sign in with link"
+        _authError.value = err
+        onResult(false, err)
+      }
+    }
+  }
+
+  // Ringtone Settings
+  fun saveCallRingtone(uri: String, title: String) {
+    val me = userProfile.value
+    com.example.util.RingtoneHelper.saveCallRingtone(getApplication(), uri, title)
+    if (me != null) {
+      val updated = me.copy(callRingtoneUri = uri, callRingtoneTitle = title)
+      _guestProfile.value = updated
+      viewModelScope.launch {
+        authRepo.updateRingtoneSettings(me.uid, callRingtoneUri = uri, callRingtoneTitle = title)
+      }
+    }
+    showToast("Call ringtone updated! 🔔")
+  }
+
+  fun saveNotificationRingtone(uri: String, title: String) {
+    val me = userProfile.value
+    com.example.util.RingtoneHelper.saveNotificationRingtone(getApplication(), uri, title)
+    if (me != null) {
+      val updated = me.copy(notificationRingtoneUri = uri, notificationRingtoneTitle = title)
+      _guestProfile.value = updated
+      viewModelScope.launch {
+        authRepo.updateRingtoneSettings(me.uid, notificationRingtoneUri = uri, notificationRingtoneTitle = title)
+      }
+    }
+    showToast("Notification sound updated! 💬")
+  }
+
   // Calling
   private fun listenToIncomingCalls(userId: String) {
     incomingCallJob?.cancel()
@@ -611,8 +896,22 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       chatRepo.getIncomingCallsFlow(userId).collect { call ->
         if (call != null && _activeCall.value == null) {
           _activeCall.value = call
+          if (call.receiverId == userId && call.status == "ringing") {
+            val user = userProfile.value
+            val ringtoneUri = user?.callRingtoneUri ?: ""
+            com.example.util.RingtoneHelper.startCallRingtone(getApplication(), ringtoneUri)
+          }
           startCallTimer()
         }
+      }
+    }
+  }
+
+  private fun listenToCallHistory(userId: String) {
+    callHistoryJob?.cancel()
+    callHistoryJob = viewModelScope.launch {
+      chatRepo.getCallHistoryFlow(userId).collect { list ->
+        _callHistory.value = list
       }
     }
   }
@@ -632,6 +931,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun acceptCall() {
     val call = _activeCall.value ?: return
+    com.example.util.RingtoneHelper.stopCallRingtone()
     viewModelScope.launch {
       chatRepo.updateCallStatus(call.id, "accepted")
       _activeCall.value = call.copy(status = "accepted")
@@ -639,10 +939,13 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun endCall() {
+    com.example.util.RingtoneHelper.stopCallRingtone()
     val call = _activeCall.value
+    val duration = _callDurationSec.value
     if (call != null) {
       viewModelScope.launch {
-        chatRepo.updateCallStatus(call.id, "ended")
+        val finalStatus = if (call.status == "accepted") "completed" else "missed"
+        chatRepo.updateCallStatus(call.id, finalStatus, duration)
       }
     }
     callTimerJob?.cancel()

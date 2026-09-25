@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -67,6 +68,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import coil.compose.AsyncImage
 import com.example.R
 import com.example.model.Conversation
 import com.example.model.StatusUpdate
@@ -235,12 +250,15 @@ fun ChatsTab(
     list
   }
 
-  Column(
+  Box(
     modifier = Modifier
       .fillMaxSize()
       .statusBarsPadding()
       .testTag("chats_tab_screen")
   ) {
+    Column(
+      modifier = Modifier.fillMaxSize()
+    ) {
     // Top Bar matching Screen 4
     Row(
       modifier = Modifier
@@ -476,6 +494,40 @@ fun ChatsTab(
       }
     }
   }
+
+    // Floating Add Username button near bottom-right corner
+    Surface(
+      modifier = Modifier
+        .align(Alignment.BottomEnd)
+        .padding(end = 18.dp, bottom = 18.dp)
+        .clip(RoundedCornerShape(26.dp))
+        .clickable { onOpenSearch() }
+        .testTag("add_username_button"),
+      shape = RoundedCornerShape(26.dp),
+      color = Color(0xEE0B3B2E),
+      border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0x9910B981)),
+      shadowElevation = 10.dp
+    ) {
+      Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(
+          imageVector = Icons.Default.PersonAdd,
+          contentDescription = "Add Username",
+          tint = PinggoMint,
+          modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = "Add Username",
+          fontSize = 14.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color.White
+        )
+      }
+    }
+  }
 }
 
 @Composable
@@ -551,52 +603,92 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
       modifier = Modifier.padding(bottom = 8.dp)
     )
 
-    val sampleCalls = listOf(
-      Triple("Priya Singh", "Incoming • 5m", false),
-      Triple("Aman Kumar", "Outgoing • 12m", true),
-      Triple("Family Group", "Missed • 16m", false),
-      Triple("Rohit Sharma", "Outgoing • 4m", true)
-    )
+    val callHistory by viewModel.callHistory.collectAsState()
+    val myUid = user?.uid ?: ""
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      items(sampleCalls) { (name, info, isVideo) ->
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            GlassAvatar(photoUrl = null, name = name, size = 48.dp)
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-              Text(
-                text = name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-              )
-              Row(verticalAlignment = Alignment.CenterVertically) {
+    if (callHistory.isEmpty()) {
+      GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Icon(
+            imageVector = Icons.Default.Call,
+            contentDescription = null,
+            tint = PinggoMint,
+            modifier = Modifier.size(44.dp)
+          )
+          Spacer(modifier = Modifier.height(12.dp))
+          Text(
+            text = "No calls yet",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+          )
+          Spacer(modifier = Modifier.height(6.dp))
+          Text(
+            text = "Voice and video calls with your contacts will appear here",
+            fontSize = 13.sp,
+            color = PinggoMintUltraLight,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+          )
+        }
+      }
+    } else {
+      LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(callHistory, key = { it.id }) { call ->
+          val isOutgoing = call.callerId == myUid
+          val otherName = if (isOutgoing) call.receiverName else call.callerName
+          val otherPhoto = if (isOutgoing) call.receiverPhoto else call.callerPhoto
+          val isVideo = call.type == "video"
+          val statusText = when (call.status) {
+            "missed" -> "Missed call"
+            "rejected" -> "Declined"
+            "completed", "ended" -> if (call.durationSec > 0) "${call.durationSec / 60}m ${call.durationSec % 60}s" else "Completed"
+            else -> if (isOutgoing) "Outgoing" else "Incoming"
+          }
+          val timeText = formatTimestamp(call.createdAt)
+
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              GlassAvatar(photoUrl = otherPhoto, name = otherName, size = 48.dp)
+              Spacer(modifier = Modifier.width(14.dp))
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = otherName.ifEmpty { "Pinggo Contact" },
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = Color.White
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(
+                    imageVector = if (isVideo) Icons.Default.Videocam else Icons.Default.Call,
+                    contentDescription = null,
+                    tint = if (call.status == "missed") Color(0xFFFF6B6B) else PinggoMint,
+                    modifier = Modifier.size(14.dp)
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text(
+                    text = "$statusText • $timeText",
+                    fontSize = 12.sp,
+                    color = Color(0xCCFFFFFF)
+                  )
+                }
+              }
+              IconButton(onClick = onOpenSearch) {
                 Icon(
                   imageVector = if (isVideo) Icons.Default.Videocam else Icons.Default.Call,
-                  contentDescription = null,
-                  tint = PinggoMint,
-                  modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                  text = info,
-                  fontSize = 12.sp,
-                  color = Color(0xCCFFFFFF)
+                  contentDescription = "Call",
+                  tint = PinggoMint
                 )
               }
-            }
-            IconButton(onClick = onOpenSearch) {
-              Icon(
-                imageVector = if (isVideo) Icons.Default.Videocam else Icons.Default.Call,
-                contentDescription = "Call",
-                tint = PinggoMint
-              )
             }
           }
         }
@@ -611,6 +703,16 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
   val updates by viewModel.statusUpdates.collectAsState()
   var newStatusText by remember { mutableStateOf("") }
   var showPostBox by remember { mutableStateOf(false) }
+
+  // Status view / viewers state
+  var viewingStatus by remember { mutableStateOf<StatusUpdate?>(null) }
+  var viewingStatusViewersFor by remember { mutableStateOf<StatusUpdate?>(null) }
+  var viewersList by remember { mutableStateOf<List<com.example.model.StatusViewer>>(emptyList()) }
+  var isLoadingViewers by remember { mutableStateOf(false) }
+
+  val myUid = user?.uid ?: ""
+  val myUpdates = remember(updates, myUid) { updates.filter { it.userId == myUid } }
+  val otherUpdates = remember(updates, myUid) { updates.filter { it.userId != myUid } }
 
   Column(
     modifier = Modifier
@@ -635,6 +737,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
       )
     }
 
+    // My Status Card
     GlassCard(
       modifier = Modifier.fillMaxWidth(),
       onClick = { showPostBox = !showPostBox }
@@ -649,7 +752,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
           photoUrl = user?.photoURL,
           name = user?.displayName ?: "Me",
           size = 54.dp,
-          hasStatusUpdate = true
+          hasStatusUpdate = myUpdates.isNotEmpty()
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -660,7 +763,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
             color = Color.White
           )
           Text(
-            text = "Tap to add status update",
+            text = if (myUpdates.isNotEmpty()) "Tap to update or view status" else "Tap to add status update",
             fontSize = 13.sp,
             color = PinggoMintUltraLight
           )
@@ -700,6 +803,86 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
       }
     }
 
+    // If user has status updates, show Status Seen & Viewers affordance
+    if (myUpdates.isNotEmpty()) {
+      Spacer(modifier = Modifier.height(14.dp))
+      Text(
+        text = "My active status updates",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = PinggoMintUltraLight,
+        modifier = Modifier.padding(bottom = 6.dp)
+      )
+
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        myUpdates.forEach { myUpdate ->
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = myUpdate.text,
+                  fontSize = 14.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = Color.White,
+                  maxLines = 2,
+                  overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                  text = formatTimestamp(myUpdate.timestamp),
+                  fontSize = 11.sp,
+                  color = PinggoMintUltraLight
+                )
+              }
+
+              Spacer(modifier = Modifier.width(10.dp))
+
+              // Real Status Seen Viewers Button
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(16.dp))
+                  .clickable {
+                    viewingStatusViewersFor = myUpdate
+                    isLoadingViewers = true
+                    viewModel.loadStatusViewers(myUpdate.id) { list ->
+                      viewersList = list
+                      isLoadingViewers = false
+                    }
+                  }
+                  .testTag("view_status_viewers_button"),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0x3310B981),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6610B981))
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = "Viewers",
+                    tint = PinggoMint,
+                    modifier = Modifier.size(16.dp)
+                  )
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text(
+                    text = "${myUpdate.viewers.size}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     Spacer(modifier = Modifier.height(20.dp))
 
     Text(
@@ -710,37 +893,294 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
       modifier = Modifier.padding(bottom = 8.dp)
     )
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      items(updates, key = { it.id }) { update ->
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+    if (otherUpdates.isEmpty()) {
+      GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+          contentAlignment = Alignment.Center
+        ) {
+          Text(
+            text = "No recent updates from contacts",
+            fontSize = 13.sp,
+            color = Color(0xCCFFFFFF)
+          )
+        }
+      }
+    } else {
+      LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(otherUpdates, key = { it.id }) { update ->
+          GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+              viewModel.recordStatusView(update.id)
+              viewingStatus = update
+            }
           ) {
-            GlassAvatar(
-              photoUrl = update.userPhoto,
-              name = update.userName,
-              size = 50.dp,
-              hasStatusUpdate = true
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Column {
-              Text(
-                text = update.userName,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              GlassAvatar(
+                photoUrl = update.userPhoto,
+                name = update.userName,
+                size = 50.dp,
+                hasStatusUpdate = true
               )
-              Text(
-                text = update.text,
-                fontSize = 13.sp,
-                color = Color(0xCCFFFFFF)
-              )
+              Spacer(modifier = Modifier.width(14.dp))
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = update.userName,
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = Color.White
+                )
+                Text(
+                  text = update.text,
+                  fontSize = 13.sp,
+                  color = Color(0xCCFFFFFF),
+                  maxLines = 2,
+                  overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                  text = formatTimestamp(update.timestamp),
+                  fontSize = 11.sp,
+                  color = PinggoMintUltraLight
+                )
+              }
             }
           }
         }
+      }
+    }
+  }
+
+  // Viewing someone else's status detail dialog
+  viewingStatus?.let { status ->
+    StatusDetailDialog(
+      status = status,
+      onDismiss = { viewingStatus = null }
+    )
+  }
+
+  // Viewing real Status Seen Viewers dialog
+  viewingStatusViewersFor?.let { status ->
+    StatusViewersDialog(
+      status = status,
+      viewers = viewersList,
+      isLoading = isLoadingViewers,
+      onDismiss = { viewingStatusViewersFor = null }
+    )
+  }
+}
+
+@Composable
+fun StatusDetailDialog(
+  status: StatusUpdate,
+  onDismiss: () -> Unit
+) {
+  Dialog(onDismissRequest = onDismiss) {
+    com.example.ui.components.GlassContainer(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(16.dp),
+      shape = RoundedCornerShape(28.dp),
+      elevation = 16.dp
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(20.dp)
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          GlassAvatar(
+            photoUrl = status.userPhoto,
+            name = status.userName,
+            size = 46.dp,
+            hasStatusUpdate = true
+          )
+          Spacer(modifier = Modifier.width(12.dp))
+          Column(modifier = Modifier.weight(1f)) {
+            Text(
+              text = status.userName,
+              fontSize = 16.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color.White
+            )
+            Text(
+              text = formatTimestamp(status.timestamp),
+              fontSize = 12.sp,
+              color = PinggoMintUltraLight
+            )
+          }
+          IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+          }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        if (status.imageUrl.isNotEmpty()) {
+          AsyncImage(
+            model = status.imageUrl,
+            contentDescription = null,
+            modifier = Modifier
+              .fillMaxWidth()
+              .heightIn(max = 240.dp)
+              .clip(RoundedCornerShape(18.dp)),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+          )
+          Spacer(modifier = Modifier.height(14.dp))
+        }
+
+        Text(
+          text = status.text,
+          fontSize = 15.sp,
+          color = Color.White,
+          lineHeight = 22.sp
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        com.example.ui.components.GlassButton(
+          text = "Close",
+          isPrimary = false,
+          onClick = onDismiss,
+          modifier = Modifier.fillMaxWidth()
+        )
+      }
+    }
+  }
+}
+
+@Composable
+fun StatusViewersDialog(
+  status: StatusUpdate,
+  viewers: List<com.example.model.StatusViewer>,
+  isLoading: Boolean,
+  onDismiss: () -> Unit
+) {
+  Dialog(onDismissRequest = onDismiss) {
+    com.example.ui.components.GlassContainer(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(16.dp),
+      shape = RoundedCornerShape(28.dp),
+      elevation = 16.dp
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(20.dp)
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              imageVector = Icons.Default.Visibility,
+              contentDescription = null,
+              tint = PinggoMint,
+              modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              text = "Viewed by ${viewers.size}",
+              fontSize = 18.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color.White
+            )
+          }
+          IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+          }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (isLoading) {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(120.dp),
+            contentAlignment = Alignment.Center
+          ) {
+            CircularProgressIndicator(color = PinggoMint, modifier = Modifier.size(32.dp))
+          }
+        } else if (viewers.isEmpty()) {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(100.dp),
+            contentAlignment = Alignment.Center
+          ) {
+            Text(
+              text = "No one has viewed this status yet",
+              fontSize = 13.sp,
+              color = Color(0xCCFFFFFF)
+            )
+          }
+        } else {
+          LazyColumn(
+            modifier = Modifier
+              .fillMaxWidth()
+              .heightIn(max = 280.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            items(viewers, key = { it.uid }) { viewer ->
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clip(RoundedCornerShape(14.dp))
+                  .background(Color(0x2210B981))
+                  .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                GlassAvatar(
+                  photoUrl = viewer.photoURL,
+                  name = viewer.displayName,
+                  size = 40.dp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                  Text(
+                    text = viewer.displayName.ifEmpty { viewer.username },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                  )
+                  Text(
+                    text = "@${viewer.username}",
+                    fontSize = 12.sp,
+                    color = PinggoMint
+                  )
+                }
+                Text(
+                  text = formatTimestamp(viewer.viewedAt),
+                  fontSize = 11.sp,
+                  color = PinggoMintUltraLight
+                )
+              }
+            }
+          }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        com.example.ui.components.GlassButton(
+          text = "Done",
+          isPrimary = false,
+          onClick = onDismiss,
+          modifier = Modifier.fillMaxWidth()
+        )
       }
     }
   }
@@ -752,6 +1192,7 @@ fun ProfileTab(
   onOpenSettings: (String) -> Unit
 ) {
   val user by viewModel.userProfile.collectAsState()
+  var showEditProfileDialog by remember { mutableStateOf(false) }
 
   Column(
     modifier = Modifier
@@ -808,13 +1249,26 @@ fun ProfileTab(
           fontSize = 13.sp,
           color = PinggoMintUltraLight
         )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Working Edit Profile Button
+        com.example.ui.components.GlassButton(
+          text = "Edit Profile",
+          icon = Icons.Default.Edit,
+          isPrimary = true,
+          onClick = { showEditProfileDialog = true },
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("edit_profile_button")
+        )
       }
     }
 
     Spacer(modifier = Modifier.height(16.dp))
 
     val settingsOptions = listOf(
-      Triple("Account", Icons.Default.Person, "account"),
+      Triple("Account (Edit Profile)", Icons.Default.Person, "account"),
       Triple("Privacy", Icons.Default.Lock, "privacy"),
       Triple("Notifications", Icons.Default.Notifications, "notifications"),
       Triple("Appearance", Icons.Default.Settings, "appearance"),
@@ -825,7 +1279,13 @@ fun ProfileTab(
       items(settingsOptions) { (title, icon, key) ->
         GlassCard(
           modifier = Modifier.fillMaxWidth(),
-          onClick = { onOpenSettings(key) }
+          onClick = {
+            if (key == "account") {
+              showEditProfileDialog = true
+            } else {
+              onOpenSettings(key)
+            }
+          }
         ) {
           Row(
             modifier = Modifier
@@ -866,6 +1326,277 @@ fun ProfileTab(
           modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(24.dp))
+      }
+    }
+  }
+
+  if (showEditProfileDialog) {
+    EditProfileDialog(
+      viewModel = viewModel,
+      user = user,
+      onDismiss = { showEditProfileDialog = false }
+    )
+  }
+}
+
+@Composable
+fun EditProfileDialog(
+  viewModel: PinggoViewModel,
+  user: User?,
+  onDismiss: () -> Unit
+) {
+  val isLoading by viewModel.isAuthLoading.collectAsState()
+  var displayName by remember(user) { mutableStateOf(user?.displayName ?: "") }
+  var username by remember(user) { mutableStateOf(user?.username ?: "") }
+  var bio by remember(user) { mutableStateOf(user?.bio ?: "") }
+  var pickedImageUri by remember { mutableStateOf<Uri?>(null) }
+  var errorMessage by remember { mutableStateOf<String?>(null) }
+  val usernameCheckState by viewModel.usernameCheckState.collectAsState()
+
+  val photoPickerLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.PickVisualMedia()
+  ) { uri: Uri? ->
+    if (uri != null) {
+      pickedImageUri = uri
+    }
+  }
+
+  Dialog(onDismissRequest = { if (!isLoading) onDismiss() }) {
+    com.example.ui.components.GlassContainer(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 16.dp),
+      shape = RoundedCornerShape(28.dp),
+      elevation = 16.dp
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+      ) {
+        // Title Row
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "Edit Profile",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+          )
+          IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+            Icon(
+              imageVector = Icons.Default.Close,
+              contentDescription = "Close",
+              tint = Color.White,
+              modifier = Modifier.size(20.dp)
+            )
+          }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Profile Picture with change overlay
+        Box(contentAlignment = Alignment.BottomEnd) {
+          if (pickedImageUri != null) {
+            AsyncImage(
+              model = pickedImageUri,
+              contentDescription = "Profile Picture",
+              modifier = Modifier
+                .size(90.dp)
+                .clip(CircleShape)
+                .border(2.dp, PinggoMint, CircleShape),
+              contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+          } else {
+            GlassAvatar(
+              photoUrl = user?.photoURL,
+              name = displayName.ifEmpty { "Pinggo" },
+              size = 90.dp,
+              isOnline = true
+            )
+          }
+
+          // Camera badge button
+          Box(
+            modifier = Modifier
+              .size(32.dp)
+              .clip(CircleShape)
+              .background(PinggoEmeraldPrimary)
+              .clickable {
+                photoPickerLauncher.launch(
+                  PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+              }
+              .testTag("change_profile_photo_button"),
+            contentAlignment = Alignment.Center
+          ) {
+            Icon(
+              imageVector = Icons.Default.CameraAlt,
+              contentDescription = "Change Profile Picture",
+              tint = Color.White,
+              modifier = Modifier.size(16.dp)
+            )
+          }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+          text = "Change Profile Picture",
+          fontSize = 12.sp,
+          color = PinggoMint,
+          fontWeight = FontWeight.Medium,
+          modifier = Modifier
+            .clickable {
+              photoPickerLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+              )
+            }
+            .padding(4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Display Name input
+        Column(modifier = Modifier.fillMaxWidth()) {
+          Text(
+            text = "Display Name",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = PinggoMintUltraLight,
+            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+          )
+          com.example.ui.components.GlassInput(
+            value = displayName,
+            onValueChange = { displayName = it },
+            placeholder = "Enter your display name",
+            testTag = "edit_display_name_input"
+          )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Username input with validation
+        Column(modifier = Modifier.fillMaxWidth()) {
+          Text(
+            text = "Username",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = PinggoMintUltraLight,
+            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+          )
+          com.example.ui.components.GlassInput(
+            value = username,
+            onValueChange = { input ->
+              val sanitized = input.lowercase().filter { c -> c.isLetterOrDigit() || c == '_' }
+              username = sanitized
+              if (sanitized != (user?.username ?: "") && sanitized.length in 3..30) {
+                viewModel.checkUsername(sanitized)
+              }
+            },
+            placeholder = "username (lowercase, numbers, _)",
+            testTag = "edit_username_input"
+          )
+
+          // Username availability feedback
+          val currentUname = user?.username ?: ""
+          if (username.isNotEmpty() && username != currentUname) {
+            val isValidFormat = username.matches(Regex("^[a-z0-9_]{3,30}$"))
+            if (!isValidFormat) {
+              Text(
+                text = "3-30 chars: lowercase letters, numbers, and _ only",
+                fontSize = 11.sp,
+                color = Color(0xFFFF6B6B),
+                modifier = Modifier.padding(start = 6.dp, top = 2.dp)
+              )
+            } else if (usernameCheckState == true) {
+              Text(
+                text = "✓ @$username is available",
+                fontSize = 11.sp,
+                color = PinggoMint,
+                modifier = Modifier.padding(start = 6.dp, top = 2.dp)
+              )
+            } else if (usernameCheckState == false) {
+              Text(
+                text = "✗ @$username is already taken",
+                fontSize = 11.sp,
+                color = Color(0xFFFF6B6B),
+                modifier = Modifier.padding(start = 6.dp, top = 2.dp)
+              )
+            }
+          }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Bio input
+        Column(modifier = Modifier.fillMaxWidth()) {
+          Text(
+            text = "Bio",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = PinggoMintUltraLight,
+            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+          )
+          com.example.ui.components.GlassInput(
+            value = bio,
+            onValueChange = { bio = it },
+            placeholder = "Living the best version of myself ✨",
+            testTag = "edit_bio_input"
+          )
+        }
+
+        if (errorMessage != null) {
+          Spacer(modifier = Modifier.height(10.dp))
+          Text(
+            text = errorMessage ?: "",
+            fontSize = 12.sp,
+            color = Color(0xFFFF6B6B),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+          )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Liquid Glass Save Changes button
+        com.example.ui.components.GlassButton(
+          text = if (isLoading) "Saving Changes..." else "Save Changes",
+          isPrimary = true,
+          isLoading = isLoading,
+          onClick = {
+            if (displayName.trim().isEmpty()) {
+              errorMessage = "Display name cannot be empty"
+              return@GlassButton
+            }
+            if (username.trim().isEmpty() || !username.matches(Regex("^[a-z0-9_]{3,30}$"))) {
+              errorMessage = "Username must be 3-30 characters (letters, numbers, _)"
+              return@GlassButton
+            }
+            if (username != (user?.username ?: "") && usernameCheckState == false) {
+              errorMessage = "Username is already taken by another user"
+              return@GlassButton
+            }
+            errorMessage = null
+            viewModel.updateProfile(
+              displayName = displayName,
+              username = username,
+              bio = bio,
+              photoUri = pickedImageUri
+            ) { success, err ->
+              if (success) {
+                onDismiss()
+              } else {
+                errorMessage = err ?: "Failed to save profile changes"
+              }
+            }
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("save_profile_button")
+        )
       }
     }
   }

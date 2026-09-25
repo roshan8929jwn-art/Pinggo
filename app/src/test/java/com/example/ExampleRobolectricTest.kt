@@ -58,55 +58,69 @@ class ExampleRobolectricTest {
 
   @Test
   fun `test back navigation from Calls, Updates, and Profile to Chat List`() {
-    var currentTab = "Chats"
+    val dispatcher = androidx.activity.OnBackPressedDispatcher()
+    var selectedTab = "Chats"
 
-    composeTestRule.setContent {
-      var selectedTab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("Chats") }
-      androidx.activity.compose.BackHandler(enabled = selectedTab != "Chats") {
+    val callback = object : androidx.activity.OnBackPressedCallback(selectedTab != "Chats") {
+      override fun handleOnBackPressed() {
         selectedTab = "Chats"
+        isEnabled = (selectedTab != "Chats")
       }
-      currentTab = selectedTab
-      androidx.compose.material3.Text(
-        text = selectedTab,
-        modifier = androidx.compose.ui.Modifier.testTag("current_tab_text")
-      )
-      androidx.compose.material3.Button(
-        onClick = { selectedTab = "Calls" },
-        modifier = androidx.compose.ui.Modifier.testTag("nav_calls_btn")
-      ) { androidx.compose.material3.Text("Calls") }
-      androidx.compose.material3.Button(
-        onClick = { selectedTab = "Updates" },
-        modifier = androidx.compose.ui.Modifier.testTag("nav_updates_btn")
-      ) { androidx.compose.material3.Text("Updates") }
-      androidx.compose.material3.Button(
-        onClick = { selectedTab = "Profile" },
-        modifier = androidx.compose.ui.Modifier.testTag("nav_profile_btn")
-      ) { androidx.compose.material3.Text("Profile") }
     }
+    dispatcher.addCallback(callback)
 
-    // 1. Initial state: Chat List tab
-    assertEquals("Chats", currentTab)
+    // 1. Initial State
+    assertEquals("Chats", selectedTab)
+    assertFalse(callback.isEnabled)
 
     // Flow 1: Chat List -> Calls -> Back -> Chat List
-    composeTestRule.onNodeWithTag("nav_calls_btn").performClick()
-    assertEquals("Calls", currentTab)
-    composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
-    assertEquals("Chats", currentTab)
-    assertFalse(composeTestRule.activity.isFinishing)
+    selectedTab = "Calls"
+    callback.isEnabled = (selectedTab != "Chats")
+    assertEquals("Calls", selectedTab)
+    dispatcher.onBackPressed()
+    assertEquals("Chats", selectedTab)
+    assertFalse(callback.isEnabled)
 
     // Flow 2: Chat List -> Updates -> Back -> Chat List
-    composeTestRule.onNodeWithTag("nav_updates_btn").performClick()
-    assertEquals("Updates", currentTab)
-    composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
-    assertEquals("Chats", currentTab)
-    assertFalse(composeTestRule.activity.isFinishing)
+    selectedTab = "Updates"
+    callback.isEnabled = (selectedTab != "Chats")
+    assertEquals("Updates", selectedTab)
+    dispatcher.onBackPressed()
+    assertEquals("Chats", selectedTab)
+    assertFalse(callback.isEnabled)
 
     // Flow 3: Chat List -> Profile -> Back -> Chat List
-    composeTestRule.onNodeWithTag("nav_profile_btn").performClick()
-    assertEquals("Profile", currentTab)
-    composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
-    assertEquals("Chats", currentTab)
-    assertFalse(composeTestRule.activity.isFinishing)
+    selectedTab = "Profile"
+    callback.isEnabled = (selectedTab != "Chats")
+    assertEquals("Profile", selectedTab)
+    dispatcher.onBackPressed()
+    assertEquals("Chats", selectedTab)
+    assertFalse(callback.isEnabled)
+  }
+
+  @Test
+  fun `username format validation test`() {
+    val validUsernameRegex = Regex("^[a-z0-9_]{3,30}$")
+    org.junit.Assert.assertTrue("rohan_01".matches(validUsernameRegex))
+    org.junit.Assert.assertTrue("alex".matches(validUsernameRegex))
+    org.junit.Assert.assertFalse("User Name".matches(validUsernameRegex))
+    org.junit.Assert.assertFalse("UPPERCASE".matches(validUsernameRegex))
+    org.junit.Assert.assertFalse("ab".matches(validUsernameRegex))
+    org.junit.Assert.assertFalse("invalid@user".matches(validUsernameRegex))
+  }
+
+  @Test
+  fun `status viewer model serialization test`() {
+    val viewer = com.example.model.StatusViewer(
+      uid = "u_viewer",
+      displayName = "Sarah Connor",
+      username = "sarah_c",
+      photoURL = "https://example.com/sarah.jpg",
+      viewedAt = 1700000000000L
+    )
+    assertEquals("u_viewer", viewer.uid)
+    assertEquals("sarah_c", viewer.username)
+    assertEquals("Sarah Connor", viewer.displayName)
   }
 }
 

@@ -12,6 +12,8 @@ import com.example.util.FirebaseInitializer
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
+import android.net.Uri
+import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -117,7 +119,7 @@ class FirebaseAuthRepository(private val context: Context) {
   }
 
   suspend fun isUsernameAvailable(username: String): Boolean {
-    val clean = username.trim().lowercase()
+    val clean = username.trim().lowercase().removePrefix("@")
     if (clean.length < 3 || clean.length > 20) return false
     val validRegex = Regex("^[a-z0-9_]+$")
     if (!validRegex.matches(clean)) return false
@@ -133,6 +135,31 @@ class FirebaseAuthRepository(private val context: Context) {
     }
   }
 
+  suspend fun resolveEmailForUsername(usernameOrEmail: String): String? {
+    val input = usernameOrEmail.trim()
+    if (input.contains("@") && input.contains(".")) {
+      return input
+    }
+    val clean = input.lowercase().removePrefix("@")
+    val db = firestore ?: return null
+    return try {
+      val doc = db.collection("usernames").document(clean).get().await()
+      if (doc.exists() && !doc.getString("email").isNullOrBlank()) {
+        doc.getString("email")
+      } else {
+        val userQuery = db.collection("users")
+          .whereEqualTo("username", clean)
+          .limit(1)
+          .get()
+          .await()
+        userQuery.documents.firstOrNull()?.getString("email")
+      }
+    } catch (e: Exception) {
+      Log.w("FirebaseAuthRepo", "resolveEmailForUsername error: ${e.message}")
+      null
+    }
+  }
+
   suspend fun createUserProfile(
     displayName: String,
     username: String,
@@ -144,7 +171,7 @@ class FirebaseAuthRepository(private val context: Context) {
     val currentFirebaseUser = a.currentUser
       ?: return Result.failure(IllegalStateException("User is not authenticated"))
 
-    val cleanUsername = username.trim().lowercase()
+    val cleanUsername = username.trim().lowercase().removePrefix("@")
     val available = isUsernameAvailable(cleanUsername)
     if (!available) {
       return Result.failure(IllegalArgumentException("Username @$cleanUsername is already taken"))
@@ -164,11 +191,68 @@ class FirebaseAuthRepository(private val context: Context) {
 
     return try {
       db.collection("users").document(user.uid).set(user.toMap()).await()
-      db.collection("usernames").document(cleanUsername).set(mapOf("uid" to user.uid)).await()
+      db.collection("usernames").document(cleanUsername).set(
+        mapOf("uid" to user.uid, "email" to user.email)
+      ).await()
       _userProfile.value = user
       Result.success(user)
     } catch (e: Exception) {
       Log.e("FirebaseAuthRepo", "createUserProfile failed", e)
+      Result.failure(e)
+    }
+  }
+
+  suspend fun updateUserProfileWithUsernameChange(
+    displayName: String,
+    newUsername: String,
+    bio: String,
+    photoUrl: String
+  ): Result<User> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth is not available"))
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    val currentFirebaseUser = a.currentUser
+      ?: return Result.failure(IllegalStateException("User is not authenticated"))
+
+    val currentProfile = _userProfile.value ?: loadUserProfile(currentFirebaseUser.uid)
+    val oldUsername = currentProfile?.username?.lowercase()?.removePrefix("@") ?: ""
+    val cleanNewUsername = newUsername.trim().lowercase().removePrefix("@")
+
+    if (cleanNewUsername.length < 3 || cleanNewUsername.length > 20 || !Regex("^[a-z0-9_]+$").matches(cleanNewUsername)) {
+      return Result.failure(IllegalArgumentException("Username must be 3-20 characters (a-z, 0-9, _)"))
+    }
+
+    if (cleanNewUsername != oldUsername) {
+      val available = isUsernameAvailable(cleanNewUsername)
+      if (!available) {
+        return Result.failure(IllegalArgumentException("Username @$cleanNewUsername is already taken"))
+      }
+    }
+
+    val updatedUser = (currentProfile ?: User(uid = currentFirebaseUser.uid)).copy(
+      displayName = displayName.ifEmpty { currentProfile?.displayName ?: "Pinggo User" },
+      username = cleanNewUsername,
+      bio = bio,
+      photoURL = photoUrl.ifEmpty { currentProfile?.photoURL ?: "" }
+    )
+
+    return try {
+      db.runTransaction { transaction ->
+        if (cleanNewUsername != oldUsername) {
+          if (oldUsername.isNotEmpty()) {
+            transaction.delete(db.collection("usernames").document(oldUsername))
+          }
+          transaction.set(
+            db.collection("usernames").document(cleanNewUsername),
+            mapOf("uid" to currentFirebaseUser.uid, "email" to updatedUser.email)
+          )
+        }
+        transaction.set(db.collection("users").document(currentFirebaseUser.uid), updatedUser.toMap())
+      }.await()
+
+      _userProfile.value = updatedUser
+      Result.success(updatedUser)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "updateUserProfileWithUsernameChange error: ${e.message}")
       Result.failure(e)
     }
   }
@@ -263,9 +347,278 @@ class FirebaseAuthRepository(private val context: Context) {
       val res = a.signInWithEmailAndPassword(email.trim(), password).await()
       val user = res.user ?: throw IllegalStateException("Firebase user is null")
       _currentUser.value = user
+      loadUserProfile(user.uid)
       Result.success(user)
     } catch (e: Exception) {
       Result.failure(e)
+    }
+  }
+
+  suspend fun signInWithUsernameOrEmail(identifier: String, password: String): Result<FirebaseUser> {
+    val trimmed = identifier.trim()
+    val resolvedEmail = resolveEmailForUsername(trimmed)
+      ?: return Result.failure(IllegalArgumentException("No Pinggo account found for \"$trimmed\""))
+    return signInWithEmail(resolvedEmail, password)
+  }
+
+  suspend fun registerGuestWithEmailPassword(
+    username: String,
+    email: String,
+    password: String,
+    displayName: String
+  ): Result<User> {
+    val cleanUsername = username.trim().lowercase().removePrefix("@")
+    if (cleanUsername.length < 3 || cleanUsername.length > 20 || !Regex("^[a-z0-9_]+$").matches(cleanUsername)) {
+      return Result.failure(IllegalArgumentException("Username must be 3-20 characters with letters, numbers, or _"))
+    }
+    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
+      return Result.failure(IllegalArgumentException("Please enter a valid email address"))
+    }
+    if (password.length < 6) {
+      return Result.failure(IllegalArgumentException("Password must be at least 6 characters"))
+    }
+    if (!isUsernameAvailable(cleanUsername)) {
+      return Result.failure(IllegalArgumentException("Username @$cleanUsername is already taken"))
+    }
+
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth is not available"))
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+
+    return try {
+      val res = a.createUserWithEmailAndPassword(email.trim(), password).await()
+      val firebaseUser = res.user ?: throw IllegalStateException("Firebase user creation failed")
+      _currentUser.value = firebaseUser
+
+      val newUser = User(
+        uid = firebaseUser.uid,
+        displayName = displayName.ifEmpty { cleanUsername },
+        username = cleanUsername,
+        email = email.trim(),
+        photoURL = "",
+        bio = "Hey there! I am using Pinggo 🐧",
+        createdAt = System.currentTimeMillis(),
+        lastSeen = System.currentTimeMillis(),
+        isOnline = true
+      )
+
+      db.collection("users").document(newUser.uid).set(newUser.toMap()).await()
+      db.collection("usernames").document(cleanUsername).set(
+        mapOf("uid" to newUser.uid, "email" to email.trim())
+      ).await()
+      _userProfile.value = newUser
+
+      try {
+        firebaseUser.sendEmailVerification().await()
+      } catch (ve: Exception) {
+        Log.w("FirebaseAuthRepo", "Verification email send error: ${ve.message}")
+      }
+
+      Result.success(newUser)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun sendEmailVerification(): Result<Unit> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth is not available"))
+    val user = a.currentUser ?: return Result.failure(IllegalStateException("No authenticated user"))
+    return try {
+      user.sendEmailVerification().await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun sendSignInLinkToEmail(email: String): Result<Unit> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth is not available"))
+    val actionCodeSettings = ActionCodeSettings.newBuilder()
+      .setUrl("https://gen-lang-client-0572544439.firebaseapp.com/login?email=${Uri.encode(email.trim())}")
+      .setHandleCodeInApp(true)
+      .setAndroidPackageName("com.example", true, "1")
+      .build()
+    return try {
+      a.sendSignInLinkToEmail(email.trim(), actionCodeSettings).await()
+      val prefs = context.getSharedPreferences("pinggo_auth_prefs", Context.MODE_PRIVATE)
+      prefs.edit().putString("email_for_sign_in", email.trim()).apply()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun signInWithEmailLink(email: String, emailLink: String): Result<FirebaseUser> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth is not available"))
+    return try {
+      if (!a.isSignInWithEmailLink(emailLink)) {
+        return Result.failure(IllegalArgumentException("Invalid or expired sign-in link"))
+      }
+      val res = a.signInWithEmailLink(email.trim(), emailLink).await()
+      val user = res.user ?: throw IllegalStateException("Firebase user is null")
+      _currentUser.value = user
+      loadUserProfile(user.uid)
+      Result.success(user)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun updateRingtoneSettings(
+    userId: String,
+    callRingtoneUri: String? = null,
+    callRingtoneTitle: String? = null,
+    notificationRingtoneUri: String? = null,
+    notificationRingtoneTitle: String? = null
+  ): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    return try {
+      val updates = mutableMapOf<String, Any>()
+      callRingtoneUri?.let { updates["callRingtoneUri"] = it }
+      callRingtoneTitle?.let { updates["callRingtoneTitle"] = it }
+      notificationRingtoneUri?.let { updates["notificationRingtoneUri"] = it }
+      notificationRingtoneTitle?.let { updates["notificationRingtoneTitle"] = it }
+
+      if (updates.isNotEmpty()) {
+        db.collection("users").document(userId).update(updates).await()
+        val current = _userProfile.value
+        if (current != null && current.uid == userId) {
+          _userProfile.value = current.copy(
+            callRingtoneUri = callRingtoneUri ?: current.callRingtoneUri,
+            callRingtoneTitle = callRingtoneTitle ?: current.callRingtoneTitle,
+            notificationRingtoneUri = notificationRingtoneUri ?: current.notificationRingtoneUri,
+            notificationRingtoneTitle = notificationRingtoneTitle ?: current.notificationRingtoneTitle
+          )
+        }
+      }
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun updatePrivacySettings(
+    userId: String,
+    lastSeen: String,
+    readReceipts: Boolean,
+    statusPrivacy: String
+  ): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    return try {
+      db.collection("users").document(userId).update(
+        mapOf(
+          "privacyLastSeen" to lastSeen,
+          "privacyReadReceipts" to readReceipts,
+          "privacyStatus" to statusPrivacy
+        )
+      ).await()
+      val current = _userProfile.value
+      if (current != null && current.uid == userId) {
+        _userProfile.value = current.copy(
+          privacyLastSeen = lastSeen,
+          privacyReadReceipts = readReceipts,
+          privacyStatus = statusPrivacy
+        )
+      }
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun updateNotificationSettings(
+    userId: String,
+    message: Boolean,
+    group: Boolean,
+    preview: Boolean,
+    call: Boolean
+  ): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    return try {
+      db.collection("users").document(userId).update(
+        mapOf(
+          "notificationMessage" to message,
+          "notificationGroup" to group,
+          "notificationPreview" to preview,
+          "notificationCall" to call
+        )
+      ).await()
+      val current = _userProfile.value
+      if (current != null && current.uid == userId) {
+        _userProfile.value = current.copy(
+          notificationMessage = message,
+          notificationGroup = group,
+          notificationPreview = preview,
+          notificationCall = call
+        )
+      }
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun blockUser(currentUserId: String, targetUserId: String): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    return try {
+      val userRef = db.collection("users").document(currentUserId)
+      db.runTransaction { transaction ->
+        val snapshot = transaction.get(userRef)
+        @Suppress("UNCHECKED_CAST")
+        val blocked = (snapshot.get("blockedUsers") as? List<String>)?.toMutableList() ?: mutableListOf()
+        if (!blocked.contains(targetUserId)) {
+          blocked.add(targetUserId)
+        }
+        transaction.update(userRef, "blockedUsers", blocked)
+      }.await()
+
+      db.collection("blockedUsers").document(currentUserId)
+        .collection("blocked").document(targetUserId)
+        .set(mapOf("blockedAt" to System.currentTimeMillis())).await()
+
+      loadUserProfile(currentUserId)
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun unblockUser(currentUserId: String, targetUserId: String): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    return try {
+      val userRef = db.collection("users").document(currentUserId)
+      db.runTransaction { transaction ->
+        val snapshot = transaction.get(userRef)
+        @Suppress("UNCHECKED_CAST")
+        val blocked = (snapshot.get("blockedUsers") as? List<String>)?.toMutableList() ?: mutableListOf()
+        blocked.remove(targetUserId)
+        transaction.update(userRef, "blockedUsers", blocked)
+      }.await()
+
+      db.collection("blockedUsers").document(currentUserId)
+        .collection("blocked").document(targetUserId)
+        .delete().await()
+
+      loadUserProfile(currentUserId)
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
+  suspend fun fetchUsersByIds(uids: List<String>): List<User> {
+    if (uids.isEmpty()) return emptyList()
+    val db = firestore ?: return emptyList()
+    return try {
+      val results = mutableListOf<User>()
+      for (uid in uids) {
+        val doc = db.collection("users").document(uid).get().await()
+        if (doc.exists() && doc.data != null) {
+          results.add(User.fromMap(doc.data!!))
+        }
+      }
+      results
+    } catch (e: Exception) {
+      emptyList()
     }
   }
 

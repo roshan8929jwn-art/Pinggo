@@ -38,7 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.model.handle
 import com.example.ui.components.GlassCard
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
@@ -83,6 +82,7 @@ fun SettingsScreen(
         Text(
           text = when (section) {
             "privacy" -> "Privacy"
+            "notifications" -> "Notifications"
             "appearance" -> "Appearance"
             "about" -> "About Pinggo"
             else -> "Settings"
@@ -130,8 +130,206 @@ fun SettingsScreen(
         }
 
         "privacy" -> {
+          val blockedUsers by viewModel.blockedUsersList.collectAsState()
+          androidx.compose.runtime.LaunchedEffect(Unit) {
+            viewModel.loadBlockedUsers()
+          }
+
           Text(
-            text = "Privacy Controls",
+            text = "Last Seen Visibility",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xCCFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp)) {
+              val currentLastSeen = user?.privacyLastSeen ?: "everyone"
+              listOf("Everyone" to "everyone", "My Friends" to "friends", "Nobody" to "nobody").forEach { (label, key) ->
+                Row(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                      user?.let { u ->
+                        viewModel.updatePrivacySettings(key, u.privacyReadReceipts, u.privacyStatus)
+                      }
+                    }
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    text = label,
+                    fontSize = 15.sp,
+                    color = Color.White,
+                    modifier = Modifier.weight(1f)
+                  )
+                  RadioButton(
+                    selected = currentLastSeen == key,
+                    onClick = {
+                      user?.let { u ->
+                        viewModel.updatePrivacySettings(key, u.privacyReadReceipts, u.privacyStatus)
+                      }
+                    },
+                    colors = RadioButtonDefaults.colors(selectedColor = PinggoEmeraldPrimary)
+                  )
+                }
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(16.dp))
+
+          Text(
+            text = "Read Receipts",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xCCFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = "Send Read Receipts",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = Color.White
+                )
+                Text(
+                  text = if (user?.privacyReadReceipts != false) "On • Senders see when messages are read" else "Off • No read status sent or seen",
+                  fontSize = 12.sp,
+                  color = Color(0xCCFFFFFF)
+                )
+              }
+              Switch(
+                checked = user?.privacyReadReceipts ?: true,
+                onCheckedChange = { checked ->
+                  user?.let { u ->
+                    viewModel.updatePrivacySettings(u.privacyLastSeen, checked, u.privacyStatus)
+                  }
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(16.dp))
+
+          Text(
+            text = "Status Privacy",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xCCFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp)) {
+              val currentStatusPriv = user?.privacyStatus ?: "everyone"
+              listOf("Everyone" to "everyone", "My Friends" to "friends").forEach { (label, key) ->
+                Row(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                      user?.let { u ->
+                        viewModel.updatePrivacySettings(u.privacyLastSeen, u.privacyReadReceipts, key)
+                      }
+                    }
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    text = label,
+                    fontSize = 15.sp,
+                    color = Color.White,
+                    modifier = Modifier.weight(1f)
+                  )
+                  RadioButton(
+                    selected = currentStatusPriv == key,
+                    onClick = {
+                      user?.let { u ->
+                        viewModel.updatePrivacySettings(u.privacyLastSeen, u.privacyReadReceipts, key)
+                      }
+                    },
+                    colors = RadioButtonDefaults.colors(selectedColor = PinggoEmeraldPrimary)
+                  )
+                }
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(16.dp))
+
+          Text(
+            text = "Blocked Users (${blockedUsers.size})",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xCCFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          if (blockedUsers.isEmpty()) {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+              Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                Text(
+                  text = "No blocked users",
+                  fontSize = 14.sp,
+                  color = Color(0xCCFFFFFF)
+                )
+              }
+            }
+          } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              blockedUsers.forEach { blockedUser ->
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                  Row(
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    com.example.ui.components.GlassAvatar(
+                      photoUrl = blockedUser.photoURL,
+                      name = blockedUser.displayName,
+                      size = 44.dp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                      Text(
+                        text = blockedUser.displayName.ifEmpty { blockedUser.username },
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                      )
+                      Text(
+                        text = "@${blockedUser.username}",
+                        fontSize = 12.sp,
+                        color = com.example.ui.theme.PinggoMint
+                      )
+                    }
+                    com.example.ui.components.GlassButton(
+                      text = "Unblock",
+                      isPrimary = false,
+                      onClick = { viewModel.unblockUser(blockedUser.uid) }
+                    )
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        "notifications" -> {
+          Text(
+            text = "Message Notifications",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color(0xCCFFFFFF),
@@ -146,30 +344,21 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(
-                    text = "Read Receipts",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                  )
-                  Text(
-                    text = "If turned off, you won't send or see read receipts",
-                    fontSize = 12.sp,
-                    color = Color(0xCCFFFFFF)
-                  )
+                  Text(text = "Direct Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                  Text(text = "Receive alerts for one-on-one chats", fontSize = 12.sp, color = Color(0xCCFFFFFF))
                 }
                 Switch(
-                  checked = user?.privacyReadReceipts ?: true,
-                  onCheckedChange = {
+                  checked = user?.notificationMessage ?: true,
+                  onCheckedChange = { checked ->
                     user?.let { u ->
-                      viewModel.createProfile(u.displayName, u.username, u.bio, u.photoURL) {}
+                      viewModel.updateNotificationSettings(checked, u.notificationGroup, u.notificationPreview, u.notificationCall)
                     }
                   },
                   colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
                 )
               }
 
-              Spacer(modifier = Modifier.height(16.dp))
+              Spacer(modifier = Modifier.height(14.dp))
 
               Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -177,24 +366,75 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(
-                    text = "Online Status",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                  )
-                  Text(
-                    text = "Show when you are actively using Pinggo",
-                    fontSize = 12.sp,
-                    color = Color(0xCCFFFFFF)
-                  )
+                  Text(text = "Group Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                  Text(text = "Receive alerts for group chats", fontSize = 12.sp, color = Color(0xCCFFFFFF))
                 }
                 Switch(
-                  checked = user?.privacyOnlineStatus ?: true,
-                  onCheckedChange = { },
+                  checked = user?.notificationGroup ?: true,
+                  onCheckedChange = { checked ->
+                    user?.let { u ->
+                      viewModel.updateNotificationSettings(u.notificationMessage, checked, u.notificationPreview, u.notificationCall)
+                    }
+                  },
                   colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
                 )
               }
+
+              Spacer(modifier = Modifier.height(14.dp))
+
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+              ) {
+                Column(modifier = Modifier.weight(1f)) {
+                  Text(text = "Show Notification Preview", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                  Text(text = "Preview message text inside lockscreen notification banner", fontSize = 12.sp, color = Color(0xCCFFFFFF))
+                }
+                Switch(
+                  checked = user?.notificationPreview ?: true,
+                  onCheckedChange = { checked ->
+                    user?.let { u ->
+                      viewModel.updateNotificationSettings(u.notificationMessage, u.notificationGroup, checked, u.notificationCall)
+                    }
+                  },
+                  colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+                )
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(16.dp))
+
+          Text(
+            text = "Call Notifications",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xCCFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+              Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Incoming Calls", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                Text(text = "Vibrate and ring for incoming voice & video calls", fontSize = 12.sp, color = Color(0xCCFFFFFF))
+              }
+              Switch(
+                checked = user?.notificationCall ?: true,
+                onCheckedChange = { checked ->
+                  user?.let { u ->
+                    viewModel.updateNotificationSettings(u.notificationMessage, u.notificationGroup, u.notificationPreview, checked)
+                  }
+                },
+                colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+              )
             }
           }
         }
@@ -238,7 +478,7 @@ fun SettingsScreen(
                 color = Color.White
               )
               Text(
-                text = "Connected as ${user?.handle ?: "@user"}",
+                text = "Connected as @${user?.username ?: "user"}",
                 fontSize = 13.sp,
                 color = PinggoEmeraldPrimary,
                 modifier = Modifier.padding(top = 4.dp)
