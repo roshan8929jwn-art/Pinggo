@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,10 +45,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,8 +89,11 @@ fun ProfileSetupScreen(
     selectedImageUri = uri
   }
 
+  val focusManager = LocalFocusManager.current
+
   LaunchedEffect(username) {
-    if (username.length >= 3) {
+    val bare = username.trim().removePrefix("@")
+    if (bare.length >= 3 && username.matches(Regex("^@?[a-zA-Z0-9_]+$"))) {
       viewModel.checkUsername(username)
     }
   }
@@ -199,11 +209,22 @@ fun ProfileSetupScreen(
         GlassInput(
           value = username,
           onValueChange = { input ->
-            username = input.filter { it.isLetterOrDigit() || it == '_' }.lowercase()
+            val allowed = input.filter { it.isLetterOrDigit() || it == '_' || it == '@' }
+            username = allowed.take(21).lowercase()
           },
-          placeholder = "username",
+          placeholder = "@username",
+          keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            capitalization = KeyboardCapitalization.None,
+            autoCorrectEnabled = false,
+            imeAction = ImeAction.Next
+          ),
+          keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+          ),
           trailingIcon = {
-            if (username.length >= 3) {
+            val bareLength = username.trim().removePrefix("@").length
+            if (bareLength >= 3 && username.matches(Regex("^@?[a-zA-Z0-9_]+$"))) {
               when (usernameCheckState) {
                 true -> Icon(Icons.Default.Check, "Available", tint = OnlineGreen, modifier = Modifier.size(20.dp))
                 false -> Icon(Icons.Default.Close, "Taken", tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
@@ -215,7 +236,7 @@ fun ProfileSetupScreen(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-          text = "Username must be 3-20 characters (letters, numbers, underscore)",
+          text = "Username must be 3-20 characters (@, letters, numbers, underscore)",
           fontSize = 11.sp,
           color = PinggoMintUltraLight.copy(alpha = 0.8f)
         )
@@ -250,12 +271,18 @@ fun ProfileSetupScreen(
             viewModel.showToast("Please enter your name")
             return@GlassButton
           }
-          if (username.length < 3) {
+          val cleanUsername = username.trim().lowercase()
+          val bare = cleanUsername.removePrefix("@")
+          if (bare.length < 3) {
             viewModel.showToast("Username must be at least 3 characters")
             return@GlassButton
           }
+          if (!cleanUsername.matches(Regex("^@?[a-z0-9_]+$"))) {
+            viewModel.showToast("Username can only contain @, letters, numbers, and underscore")
+            return@GlassButton
+          }
           val photo = selectedImageUri?.toString() ?: (currentUser?.photoUrl?.toString() ?: "")
-          viewModel.createProfile(displayName, username, bio, photo) {
+          viewModel.createProfile(displayName, cleanUsername, bio, photo) {
             onProfileCreated()
           }
         },

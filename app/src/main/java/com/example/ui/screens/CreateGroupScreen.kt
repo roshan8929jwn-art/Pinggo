@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Conversation
 import com.example.model.User
+import com.example.model.handle
 import com.example.ui.components.GlassAvatar
 import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassCard
@@ -198,7 +199,7 @@ fun CreateGroupScreen(
                   color = Color.White
                 )
                 Text(
-                  text = "@${user.username}",
+                  text = user.handle,
                   fontSize = 12.sp,
                   color = PinggoEmeraldPrimary
                 )

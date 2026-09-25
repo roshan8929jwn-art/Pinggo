@@ -13,6 +13,7 @@ import com.example.model.Conversation
 import com.example.model.Message
 import com.example.model.StatusUpdate
 import com.example.model.User
+import com.example.model.handle
 import com.example.ui.theme.AppThemeMode
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Job
@@ -471,7 +472,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     viewModelScope.launch {
       chatRepo.blockUser(me.uid, targetUser.uid)
       _previewUser.value = null
-      showToast("Blocked @${targetUser.username}")
+      showToast("Blocked ${targetUser.handle}")
     }
   }
 

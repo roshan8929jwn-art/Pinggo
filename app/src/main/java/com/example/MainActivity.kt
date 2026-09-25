@@ -89,6 +89,12 @@ class MainActivity : ComponentActivity() {
         }
       }
 
+      LaunchedEffect(currentUser) {
+        if (currentUser == null && currentScreen != PinggoScreen.SPLASH && currentScreen != PinggoScreen.LOGIN) {
+          currentScreen = PinggoScreen.LOGIN
+        }
+      }
+
       PinggoTheme(themeMode = themeMode) {
         Surface(
           modifier = Modifier.fillMaxSize(),

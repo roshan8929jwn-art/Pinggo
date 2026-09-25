@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.Conversation
 import com.example.model.User
+import com.example.model.handle
 import com.example.ui.components.GlassAvatar
 import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassCard
@@ -140,7 +141,7 @@ fun UserSearchScreen(
                     color = Color.White
                   )
                   Text(
-                    text = "@${user.username}",
+                    text = user.handle,
                     fontSize = 13.sp,
                     color = PinggoEmeraldPrimary,
                     fontWeight = FontWeight.Medium
@@ -187,7 +188,7 @@ fun UserSearchScreen(
               color = Color.White
             )
             Text(
-              text = "@${user.username}",
+              text = user.handle,
               fontSize = 14.sp,
               color = PinggoEmeraldPrimary,
               fontWeight = FontWeight.Medium

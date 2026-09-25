@@ -28,7 +28,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +67,13 @@ fun LoginScreen(
 ) {
   val isLoading by viewModel.isAuthLoading.collectAsState()
   val authError by viewModel.authError.collectAsState()
+  val currentUser by viewModel.currentUser.collectAsState()
+
+  LaunchedEffect(currentUser) {
+    if (currentUser != null) {
+      onLoggedIn()
+    }
+  }
 
   var showEmailForm by remember { mutableStateOf(false) }
   var isRegisterMode by remember { mutableStateOf(false) }
@@ -76,7 +86,8 @@ fun LoginScreen(
         .fillMaxSize()
         .statusBarsPadding()
         .navigationBarsPadding()
-        .padding(horizontal = 24.dp, vertical = 20.dp),
+        .padding(horizontal = 24.dp, vertical = 20.dp)
+        .verticalScroll(rememberScrollState()),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.SpaceBetween
     ) {

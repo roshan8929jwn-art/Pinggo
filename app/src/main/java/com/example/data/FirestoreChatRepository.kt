@@ -424,19 +424,24 @@ class FirestoreChatRepository {
 
     return try {
       val results = mutableListOf<User>()
+      val bare = clean.removePrefix("@")
+      val withAt = "@$bare"
+      val searchPrefixes = setOf(clean, bare, withAt).filter { it.isNotEmpty() }
 
       // 1. Search by username prefix
-      val usernameQuery = firestore.collection("users")
-        .whereGreaterThanOrEqualTo("username", clean)
-        .whereLessThanOrEqualTo("username", clean + "\uf8ff")
-        .limit(20)
-        .get()
-        .await()
+      for (prefix in searchPrefixes) {
+        val usernameQuery = firestore.collection("users")
+          .whereGreaterThanOrEqualTo("username", prefix)
+          .whereLessThanOrEqualTo("username", prefix + "\uf8ff")
+          .limit(20)
+          .get()
+          .await()
 
-      for (doc in usernameQuery.documents) {
-        val user = User.fromMap(doc.data ?: continue)
-        if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
-          results.add(user)
+        for (doc in usernameQuery.documents) {
+          val user = User.fromMap(doc.data ?: continue)
+          if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
+            results.add(user)
+          }
         }
       }
 
@@ -446,7 +451,7 @@ class FirestoreChatRepository {
         for (doc in allUsers.documents) {
           val user = User.fromMap(doc.data ?: continue)
           if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
-            if (user.displayName.lowercase().contains(clean) || user.email.lowercase().contains(clean)) {
+            if (user.displayName.lowercase().contains(bare) || user.email.lowercase().contains(bare)) {
               results.add(user)
             }
           }

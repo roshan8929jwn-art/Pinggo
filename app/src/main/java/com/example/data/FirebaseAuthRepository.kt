@@ -75,13 +75,18 @@ class FirebaseAuthRepository(private val context: Context) {
 
   suspend fun isUsernameAvailable(username: String): Boolean {
     val clean = username.trim().lowercase()
-    if (clean.length < 3 || clean.length > 20) return false
-    val validRegex = Regex("^[a-z0-9_]+$")
+    val bare = clean.removePrefix("@")
+    if (bare.length < 3 || bare.length > 20) return false
+    val validRegex = Regex("^@?[a-z0-9_]+$")
     if (!validRegex.matches(clean)) return false
 
     return try {
-      val doc = firestore.collection("usernames").document(clean).get().await()
-      !doc.exists() || doc.getString("uid") == auth.currentUser?.uid
+      val docClean = firestore.collection("usernames").document(clean).get().await()
+      val docBare = if (clean != bare) firestore.collection("usernames").document(bare).get().await() else null
+      val currentUid = auth.currentUser?.uid
+      val cleanOk = !docClean.exists() || docClean.getString("uid") == currentUid
+      val bareOk = docBare == null || !docBare.exists() || docBare.getString("uid") == currentUid
+      cleanOk && bareOk
     } catch (e: Exception) {
       e.printStackTrace()
       false
@@ -98,9 +103,10 @@ class FirebaseAuthRepository(private val context: Context) {
       ?: return Result.failure(IllegalStateException("User is not authenticated"))
 
     val cleanUsername = username.trim().lowercase()
+    val bare = cleanUsername.removePrefix("@")
     val available = isUsernameAvailable(cleanUsername)
     if (!available) {
-      return Result.failure(IllegalArgumentException("Username @$cleanUsername is already taken"))
+      return Result.failure(IllegalArgumentException("Username @$bare is already taken"))
     }
 
     val user = User(
@@ -118,8 +124,11 @@ class FirebaseAuthRepository(private val context: Context) {
     return try {
       // 1. Save to users collection
       firestore.collection("users").document(user.uid).set(user.toMap()).await()
-      // 2. Reserve username in usernames collection
+      // 2. Reserve username in usernames collection (both clean and bare)
       firestore.collection("usernames").document(cleanUsername).set(mapOf("uid" to user.uid)).await()
+      if (cleanUsername != bare) {
+        firestore.collection("usernames").document(bare).set(mapOf("uid" to user.uid)).await()
+      }
       _userProfile.value = user
       Result.success(user)
     } catch (e: Exception) {

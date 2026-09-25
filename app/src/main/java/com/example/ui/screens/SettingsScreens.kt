@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.handle
 import com.example.ui.components.GlassCard
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
@@ -237,7 +238,7 @@ fun SettingsScreen(
                 color = Color.White
               )
               Text(
-                text = "Connected as @${user?.username ?: "user"}",
+                text = "Connected as ${user?.handle ?: "@user"}",
                 fontSize = 13.sp,
                 color = PinggoEmeraldPrimary,
                 modifier = Modifier.padding(top = 4.dp)

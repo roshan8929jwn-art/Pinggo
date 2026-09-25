@@ -53,3 +53,7 @@ data class User(
     }
   }
 }
+
+val User.handle: String
+  get() = if (username.startsWith("@")) username else if (username.isNotEmpty()) "@$username" else "@username"
+

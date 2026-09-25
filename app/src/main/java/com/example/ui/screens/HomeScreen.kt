@@ -71,6 +71,7 @@ import com.example.model.StatusUpdate
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.components.PinggoHeaderBrand
 import com.example.model.User
+import com.example.model.handle
 import com.example.ui.components.GlassAvatar
 import com.example.ui.components.GlassBottomBar
 import com.example.ui.components.GlassCard
@@ -783,7 +784,7 @@ fun ProfileTab(
           color = Color.White
         )
         Text(
-          text = "@${user?.username ?: "username"}",
+          text = user?.handle ?: "@username",
           fontSize = 14.sp,
           color = PinggoMint,
           fontWeight = FontWeight.Medium
