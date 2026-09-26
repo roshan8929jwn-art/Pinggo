@@ -56,7 +56,8 @@ enum class PinggoScreen {
   CREATE_GROUP,
   SETTINGS,
   DIAGNOSTIC,
-  SIGN_UP
+  SIGN_UP,
+  PASSWORD_LOGIN
 }
 
 class MainActivity : ComponentActivity() {
@@ -158,6 +159,35 @@ class MainActivity : ComponentActivity() {
                     currentScreen = PinggoScreen.DIAGNOSTIC
                   },
                   onSignUpRequested = {
+                    viewModel.clearAuthError()
+                    currentScreen = PinggoScreen.SIGN_UP
+                  },
+                  onPasswordLoginRequested = {
+                    viewModel.clearAuthError()
+                    currentScreen = PinggoScreen.PASSWORD_LOGIN
+                  }
+                )
+              }
+
+              PinggoScreen.PASSWORD_LOGIN -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.LOGIN
+                }
+                com.example.ui.screens.PasswordLoginScreen(
+                  viewModel = viewModel,
+                  onBack = { 
+                    viewModel.clearAuthError()
+                    currentScreen = PinggoScreen.LOGIN 
+                  },
+                  onLoggedIn = {
+                    currentScreen = if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
+                      PinggoScreen.PROFILE_SETUP
+                    } else {
+                      PinggoScreen.HOME
+                    }
+                  },
+                  onSignUpRequested = {
+                    viewModel.clearAuthError()
                     currentScreen = PinggoScreen.SIGN_UP
                   }
                 )
@@ -169,7 +199,10 @@ class MainActivity : ComponentActivity() {
                 }
                 SignUpScreen(
                   viewModel = viewModel,
-                  onBack = { currentScreen = PinggoScreen.LOGIN },
+                  onBack = { 
+                    viewModel.clearAuthError()
+                    currentScreen = PinggoScreen.LOGIN 
+                  },
                   onSignedUp = {
                     currentScreen = PinggoScreen.PROFILE_SETUP
                   }

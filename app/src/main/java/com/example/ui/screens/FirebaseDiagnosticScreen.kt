@@ -266,7 +266,7 @@ fun FirebaseDiagnosticScreen(
           GuideStep(
             number = "1",
             title = "Firebase Authentication",
-            description = "In Firebase Console > Authentication > Sign-in method, ensure Email/Password and Anonymous are enabled."
+            description = "In Firebase Console > Authentication > Sign-in method, ensure Email/Password and Google are enabled."
           )
 
           GuideStep(
@@ -279,6 +279,53 @@ fun FirebaseDiagnosticScreen(
             number = "3",
             title = "Cloud Storage",
             description = "In Firebase Console > Storage, get started with the default bucket for voice notes & media."
+          )
+
+          GuideStep(
+            number = "4",
+            title = "SHA-1 Fingerprint",
+            description = "In Firebase Console > Project Settings, ensure the SHA-1 of your signing key is added."
+          )
+
+          GuideStep(
+            number = "5",
+            title = "Google Cloud Console",
+            description = "Ensure the Web Client ID is not restricted to specific origins that block Android."
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(16.dp))
+
+      // Runtime Details Box
+      Box(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(20.dp))
+          .background(Color.White.copy(alpha = 0.05f))
+          .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+          .padding(18.dp)
+      ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            text = "Runtime Configuration Info",
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp
+          )
+          
+          Text(
+            text = "Package: com.aistudio.pinggo.vuxowh",
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace
+          )
+
+          Text(
+            text = "Web Client ID: 496832475693-2n35psfvke0hlq7v016btdq803d03bfe.apps.googleusercontent.com",
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace
           )
         }
       }

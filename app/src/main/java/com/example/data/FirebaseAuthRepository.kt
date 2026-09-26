@@ -308,6 +308,7 @@ class FirebaseAuthRepository(private val context: Context) {
       val resolvedClientId: String? = webClientId?.takeIf { it.isNotBlank() }
         ?: resolvedSecretId.takeIf { it.isNotBlank() && !it.startsWith("YOUR_WEB") }
         ?: getWebClientIdFromResources()
+        ?: "496832475693-2n35psfvke0hlq7v016btdq803d03bfe.apps.googleusercontent.com" // Hardcoded project-specific fallback
 
       Log.d("FirebaseAuthRepo", "Resolved Google Client ID: $resolvedClientId")
 
@@ -458,7 +459,7 @@ class FirebaseAuthRepository(private val context: Context) {
     val actionCodeSettings = ActionCodeSettings.newBuilder()
       .setUrl("https://gen-lang-client-0572544439.firebaseapp.com/login?email=${Uri.encode(email.trim())}")
       .setHandleCodeInApp(true)
-      .setAndroidPackageName("com.example", true, "1")
+      .setAndroidPackageName("com.aistudio.pinggo.vuxowh", true, "1")
       .build()
     return try {
       a.sendSignInLinkToEmail(email.trim(), actionCodeSettings).await()

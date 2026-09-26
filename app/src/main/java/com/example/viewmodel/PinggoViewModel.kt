@@ -250,6 +250,10 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  fun clearAuthError() {
+    _authError.value = null
+  }
+
   fun setFilter(filter: String) {
     _selectedFilter.value = filter
   }
@@ -291,11 +295,12 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       msg.contains("invalid-email", ignoreCase = true) -> {
         "Please enter a valid email address."
       }
-      msg.contains("No credential available", ignoreCase = true) -> {
-        "No Google account credentials available on this device."
-      }
       msg.contains("network-request-failed", ignoreCase = true) -> {
         "Network error. Please check your internet connection."
+      }
+      msg.contains("No credential available", ignoreCase = true) -> {
+        // Instead of mapping to a string, we return the raw message or a clearer one
+        "Google Sign-In failed: No Google account found on this device. Please sign in to your Google account in device settings or use Email/Password login."
       }
       else -> "${errorCode}${msg}".ifEmpty { "Authentication failed (${err.javaClass.simpleName})" }
     }
@@ -827,7 +832,12 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       val res = authRepo.registerGuestWithEmailPassword(username, email, password, displayName)
       _isAuthLoading.value = false
       if (res.isSuccess) {
-        showToast("Verification email sent. Please check your inbox and verify your email address.")
+        val user = currentUser.value
+        if (user != null && !user.isEmailVerified) {
+          showToast("Account created! Please check your inbox and verify your email.")
+        } else {
+          showToast("Account created successfully!")
+        }
         onComplete(true, null)
       } else {
         val err = res.exceptionOrNull()?.message ?: "Registration failed"

@@ -40,7 +40,8 @@ fun LoginScreen(
   viewModel: PinggoViewModel,
   onLoggedIn: () -> Unit,
   onOpenDiagnostics: () -> Unit = {},
-  onSignUpRequested: () -> Unit = {}
+  onSignUpRequested: () -> Unit = {},
+  onPasswordLoginRequested: () -> Unit = {}
 ) {
   val isLoading by viewModel.isAuthLoading.collectAsState()
   val authError by viewModel.authError.collectAsState()
@@ -51,11 +52,6 @@ fun LoginScreen(
       onLoggedIn()
     }
   }
-
-  var identifierInput by remember { mutableStateOf("") }
-  var passwordInput by remember { mutableStateOf("") }
-  var passwordVisible by remember { mutableStateOf(false) }
-  var showLoginOptions by remember { mutableStateOf(false) }
 
   LiquidGlassBackground {
     Column(
@@ -123,7 +119,7 @@ fun LoginScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
           ) {
-            if (isLoading && !showLoginOptions) {
+            if (isLoading) {
               CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 color = PinggoPinkPrimary,
@@ -166,108 +162,12 @@ fun LoginScreen(
 
         // Login with Username/Password
         GlassButton(
-          text = if (showLoginOptions) "Hide Login" else "Login with Password",
+          text = "Login with Password",
           icon = Icons.Default.Lock,
           isPrimary = false,
-          onClick = { showLoginOptions = !showLoginOptions },
+          onClick = onPasswordLoginRequested,
           modifier = Modifier.fillMaxWidth()
         )
-
-        AnimatedVisibility(visible = showLoginOptions) {
-          Column(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(top = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-          ) {
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-              Column(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-              ) {
-                Text(
-                  text = "Login to Pinggo",
-                  style = MaterialTheme.typography.titleLarge,
-                  color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                GlassInput(
-                  value = identifierInput,
-                  onValueChange = { identifierInput = it },
-                  placeholder = "Username or Email",
-                  leadingIcon = Icons.Default.Email,
-                  testTag = "login_identifier_input"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                GlassInput(
-                  value = passwordInput,
-                  onValueChange = { passwordInput = it },
-                  placeholder = "Password",
-                  leadingIcon = Icons.Default.Lock,
-                  visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                  trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                      Icon(
-                        imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = null
-                      )
-                    }
-                  },
-                  testTag = "login_password_input"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Box(
-                  modifier = Modifier.fillMaxWidth(),
-                  contentAlignment = Alignment.CenterEnd
-                ) {
-                  Text(
-                    text = "Forgot Password?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = PinggoPinkPrimary,
-                    modifier = Modifier.clickable {
-                       viewModel.sendPasswordResetEmail(identifierInput) { success, error ->
-                         if (!success) {
-                           viewModel.showToast(error ?: "Error sending reset email")
-                         }
-                       }
-                    }
-                  )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                GlassButton(
-                  text = "Sign In",
-                  isPrimary = true,
-                  isLoading = isLoading,
-                  onClick = {
-                    if (identifierInput.isNotBlank() && passwordInput.isNotBlank()) {
-                      viewModel.signInWithUsernameOrEmail(identifierInput, passwordInput) { success, _ ->
-                        if (success) {
-                          onLoggedIn()
-                        }
-                      }
-                    } else {
-                      viewModel.showToast("Please enter identifier and password")
-                    }
-                  },
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("login_submit_button")
-                )
-              }
-            }
-          }
-        }
 
         if (authError != null) {
           Spacer(modifier = Modifier.height(12.dp))
