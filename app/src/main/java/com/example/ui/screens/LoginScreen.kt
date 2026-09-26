@@ -39,7 +39,8 @@ import com.example.viewmodel.PinggoViewModel
 fun LoginScreen(
   viewModel: PinggoViewModel,
   onLoggedIn: () -> Unit,
-  onOpenDiagnostics: () -> Unit = {}
+  onOpenDiagnostics: () -> Unit = {},
+  onSignUpRequested: () -> Unit = {}
 ) {
   val isLoading by viewModel.isAuthLoading.collectAsState()
   val authError by viewModel.authError.collectAsState()
@@ -81,9 +82,8 @@ fun LoginScreen(
 
         Text(
           text = "Welcome to Pinggo",
-          fontSize = 26.sp,
-          fontWeight = FontWeight.Bold,
-          color = Color.Black,
+          style = MaterialTheme.typography.headlineLarge,
+          color = MaterialTheme.colorScheme.onBackground,
           textAlign = TextAlign.Center
         )
 
@@ -91,10 +91,10 @@ fun LoginScreen(
 
         Text(
           text = "Connect with your friends with real Google and password authentication",
-          fontSize = 14.sp,
-          color = Color.Gray,
+          style = MaterialTheme.typography.bodyLarge,
+          color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
           textAlign = TextAlign.Center,
-          lineHeight = 20.sp
+          lineHeight = 22.sp
         )
       }
 
@@ -135,8 +135,8 @@ fun LoginScreen(
               Text(
                 text = "Continue with Google",
                 color = Color(0xFF1E293B),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
               )
             }
           }
@@ -154,9 +154,9 @@ fun LoginScreen(
           Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFFEEEEEE)))
           Text(
             text = "OR",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.Gray,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(horizontal = 12.dp)
           )
           Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFFEEEEEE)))
@@ -189,9 +189,8 @@ fun LoginScreen(
               ) {
                 Text(
                   text = "Login to Pinggo",
-                  fontSize = 15.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = Color.Black
+                  style = MaterialTheme.typography.titleLarge,
+                  color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -223,6 +222,27 @@ fun LoginScreen(
                   testTag = "login_password_input"
                 )
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                  modifier = Modifier.fillMaxWidth(),
+                  contentAlignment = Alignment.CenterEnd
+                ) {
+                  Text(
+                    text = "Forgot Password?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PinggoPinkPrimary,
+                    modifier = Modifier.clickable {
+                       viewModel.sendPasswordResetEmail(identifierInput) { success, error ->
+                         if (!success) {
+                           viewModel.showToast(error ?: "Error sending reset email")
+                         }
+                       }
+                    }
+                  )
+                }
+
                 Spacer(modifier = Modifier.height(14.dp))
 
                 GlassButton(
@@ -253,10 +273,33 @@ fun LoginScreen(
           Spacer(modifier = Modifier.height(12.dp))
           Text(
             text = authError ?: "",
-            color = Color.Red,
-            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center
           )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.Center,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "Don't have an account?",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+          )
+          TextButton(onClick = onSignUpRequested) {
+            Text(
+              text = "Create New Account",
+              color = PinggoPinkPrimary,
+              style = MaterialTheme.typography.bodyLarge,
+              fontWeight = FontWeight.Bold
+            )
+          }
         }
       }
 
@@ -267,9 +310,9 @@ fun LoginScreen(
       ) {
         Text(
           text = "\uD83D\uDEE0️ Diagnostics",
-          fontSize = 12.sp,
-          fontWeight = FontWeight.Medium,
-          color = Color.Gray,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
           modifier = Modifier.clickable { onOpenDiagnostics() }
         )
         Spacer(modifier = Modifier.height(10.dp))

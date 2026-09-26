@@ -18,6 +18,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +51,14 @@ class FirebaseAuthRepository(private val context: Context) {
       FirebaseFirestore.getInstance()
     } catch (t: Throwable) {
       Log.w("FirebaseAuthRepo", "FirebaseFirestore not available: ${t.message}")
+      null
+    }
+
+  private val functions: FirebaseFunctions?
+    get() = try {
+      FirebaseFunctions.getInstance()
+    } catch (t: Throwable) {
+      Log.w("FirebaseAuthRepo", "FirebaseFunctions not available: ${t.message}")
       null
     }
 
@@ -289,10 +298,18 @@ class FirebaseAuthRepository(private val context: Context) {
     )
 
     return try {
-      val resolvedClientId = webClientId?.takeIf { it.isNotBlank() }
+      val secretId: String = "" // Fallback if BuildConfig field is missing
+      // Attempt to get from BuildConfig if it exists, otherwise empty
+      val resolvedSecretId = try {
+          val field = com.example.BuildConfig::class.java.getField("GOOGLE_WEB_CLIENT_ID")
+          field.get(null) as String
+      } catch (e: Exception) { "" }
+
+      val resolvedClientId: String? = webClientId?.takeIf { it.isNotBlank() }
+        ?: resolvedSecretId.takeIf { it.isNotBlank() && !it.startsWith("YOUR_WEB") }
         ?: getWebClientIdFromResources()
 
-      if (resolvedClientId.isNullOrBlank() || resolvedClientId.contains("pinggo.apps")) {
+      if (resolvedClientId == null || resolvedClientId.isBlank() || resolvedClientId.contains("pinggo.apps")) {
         return Result.failure(
           IllegalStateException(
             "CONFIGURATION_NOT_FOUND: Google Sign-In requires an OAuth 2.0 Web Client ID in the Firebase project. Please enable Google provider in Firebase Console and ensure google-services.json includes the web client ID."
@@ -302,7 +319,7 @@ class FirebaseAuthRepository(private val context: Context) {
 
       val googleIdOption = GetGoogleIdOption.Builder()
         .setFilterByAuthorizedAccounts(false)
-        .setServerClientId(resolvedClientId)
+        .setServerClientId(resolvedClientId!!)
         .setAutoSelectEnabled(false)
         .build()
 
@@ -677,6 +694,50 @@ class FirebaseAuthRepository(private val context: Context) {
       Result.success(Unit)
     } catch (e: Exception) {
       Log.e("FirebaseAuthRepo", "linkEmailPassword failed", e)
+      Result.failure(e)
+    }
+  }
+
+  suspend fun sendOtp(email: String): Result<Unit> {
+    val f = functions ?: return Result.failure(IllegalStateException("Firebase Functions not ready"))
+    return try {
+      val data = hashMapOf("email" to email)
+      f.getHttpsCallable("sendOtp")
+        .call(data)
+        .await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "sendOtp call failed", e)
+      // Fallback for demo if functions are not deployed:
+      // return Result.failure(e)
+      
+      // FOR DEMO PURPOSES ONLY: if the function is not found (not deployed), 
+      // we'll log it and tell the user they need to deploy the provided functions.
+      Result.failure(Exception("Cloud Function 'sendOtp' not found or failed. Please deploy the provided firebase_otp_functions.js to your Firebase project."))
+    }
+  }
+
+  suspend fun verifyOtp(email: String, otp: String): Result<Unit> {
+    val f = functions ?: return Result.failure(IllegalStateException("Firebase Functions not ready"))
+    return try {
+      val data = hashMapOf("email" to email, "otp" to otp)
+      f.getHttpsCallable("verifyOtp")
+        .call(data)
+        .await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "verifyOtp call failed", e)
+      Result.failure(Exception("OTP Verification failed: ${e.message}. Ensure backend is deployed."))
+    }
+  }
+
+  suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth not ready"))
+    return try {
+      a.sendPasswordResetEmail(email.trim()).await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "sendPasswordResetEmail failed", e)
       Result.failure(e)
     }
   }

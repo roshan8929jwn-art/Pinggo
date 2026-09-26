@@ -48,6 +48,7 @@ import com.example.ui.theme.*
 
 /**
  * Dynamic Liquid Glass Background with realistic luminous gradient orbs and glass reflections.
+ * ENSURED: Correct contrast background for text visibility.
  */
 @Composable
 fun LiquidGlassBackground(
@@ -76,7 +77,7 @@ fun LiquidGlassBackground(
     label = "orb2"
   )
 
-  val bgColor = if (isDark) PinggoBlack else PinggoOffWhite
+  val bgColor = if (isDark) DarkBackground else PinggoOffWhite
   val orbColor1 = when (design) {
     GlassDesign.PINK -> Color(0x40FF69B4)
     GlassDesign.CRYSTAL -> Color(0x204285F4)
@@ -116,6 +117,7 @@ fun LiquidGlassBackground(
 
 /**
  * Reusable GlassContainer with translucent frosted glass surface.
+ * FIX: Improved surface opacity for text readability.
  */
 @Composable
 fun GlassContainer(
@@ -127,11 +129,11 @@ fun GlassContainer(
 ) {
   val design = LocalGlassDesign.current
   val surfaceColor = when (design) {
-    GlassDesign.PINK -> PinggoPinkLight.copy(alpha = 0.2f)
-    GlassDesign.CRYSTAL -> Color.White.copy(alpha = 0.1f)
-    else -> if (isDark) Color.Black.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.6f)
+    GlassDesign.PINK -> PinggoPinkLight.copy(alpha = 0.25f)
+    GlassDesign.CRYSTAL -> if (isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.15f)
+    else -> if (isDark) Color(0xFF1E1E1E).copy(alpha = 0.85f) else Color.White.copy(alpha = 0.75f)
   }
-  val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else PinggoPinkPrimary.copy(alpha = 0.2f)
+  val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else PinggoPinkPrimary.copy(alpha = 0.25f)
 
   Box(
     modifier = modifier
@@ -145,7 +147,8 @@ fun GlassContainer(
 }
 
 /**
- * Reusable GlassCard for lists and interactive cards
+ * Reusable GlassCard for lists and interactive cards.
+ * FIX: Higher opacity and theme-aware colors for maximum text contrast.
  */
 @Composable
 fun GlassCard(
@@ -157,9 +160,9 @@ fun GlassCard(
 ) {
   val design = LocalGlassDesign.current
   val surfaceColor = when (design) {
-    GlassDesign.PINK -> PinggoPinkLight.copy(alpha = 0.15f)
-    GlassDesign.CRYSTAL -> Color.White.copy(alpha = 0.08f)
-    else -> if (isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.9f)
+    GlassDesign.PINK -> PinggoPinkLight.copy(alpha = 0.2f)
+    GlassDesign.CRYSTAL -> if (isDark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.15f)
+    else -> if (isDark) DarkSurface.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.95f)
   }
   
   val clickableModifier = if (onClick != null) {
@@ -173,7 +176,7 @@ fun GlassCard(
     modifier = modifier
       .clip(shape)
       .background(surfaceColor)
-      .border(0.5.dp, Color.LightGray.copy(alpha = 0.2f), shape)
+      .border(0.5.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.3f), shape)
       .then(clickableModifier)
   ) {
     content()
@@ -181,7 +184,8 @@ fun GlassCard(
 }
 
 /**
- * Reusable GlassButton
+ * Reusable GlassButton.
+ * FIX: High contrast text colors for primary and secondary variants.
  */
 @Composable
 fun GlassButton(
@@ -201,14 +205,15 @@ fun GlassButton(
   } else {
     Brush.verticalGradient(
       listOf(
-        if (isDark) Color(0x33FFFFFF) else Color.White,
-        if (isDark) Color(0x11FFFFFF) else Color(0xFFF2F2F7)
+        if (isDark) Color(0xFF3A3A3C) else Color.White,
+        if (isDark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
       )
     )
   }
 
-  val contentColor = if (isPrimary) Color.White else if (isDark) Color.White else PinggoBlack
-  val borderColor = if (isPrimary) Color.Transparent else Color.LightGray.copy(alpha = 0.3f)
+  // Primary: White text always works on pink. Secondary: uses semantic primary text color.
+  val contentColor = if (isPrimary) Color.White else MaterialTheme.colorScheme.onBackground
+  val borderColor = if (isPrimary) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
 
   Surface(
     modifier = modifier
@@ -218,12 +223,12 @@ fun GlassButton(
       .clickable(
         enabled = enabled && !isLoading,
         interactionSource = remember { MutableInteractionSource() },
-        indication = ripple(bounded = true, color = Color.White)
+        indication = ripple(bounded = true, color = if(isPrimary) Color.White else PinggoPinkPrimary)
       ) { onClick() },
     shape = shape,
     color = Color.Transparent,
-    border = BorderStroke(1.dp, borderColor),
-    shadowElevation = if (isPrimary) 4.dp else 0.dp
+    border = BorderStroke(1.5.dp, borderColor),
+    shadowElevation = if (isPrimary) 6.dp else 0.dp
   ) {
     Box(
       modifier = Modifier
@@ -247,15 +252,15 @@ fun GlassButton(
               imageVector = icon,
               contentDescription = null,
               tint = contentColor,
-              modifier = Modifier.size(20.dp)
+              modifier = Modifier.size(22.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
           }
           Text(
             text = text,
             color = contentColor,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold
           )
         }
       }
@@ -264,7 +269,7 @@ fun GlassButton(
 }
 
 /**
- * Reusable GlassIconButton
+ * Reusable GlassIconButton.
  */
 @Composable
 fun GlassIconButton(
@@ -277,18 +282,18 @@ fun GlassIconButton(
   size: Dp = 44.dp,
   testTag: String = "glass_icon_button"
 ) {
-  val iconTint = tint ?: if (isDark) Color.White else PinggoBlack
-  val surfaceColor = if (isDark) Color(0x33FFFFFF) else Color(0x99FFFFFF)
+  val iconTint = tint ?: MaterialTheme.colorScheme.onSurface
+  val surfaceColor = if(isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
   Box(
     modifier = modifier
       .size(size)
       .clip(CircleShape)
       .background(surfaceColor)
-      .border(BorderStroke(0.5.dp, Color.LightGray.copy(alpha = 0.3f)), CircleShape)
+      .border(BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.4f)), CircleShape)
       .clickable(
         interactionSource = remember { MutableInteractionSource() },
-        indication = ripple(bounded = true, color = PinggoPinkPrimary)
+        indication = ripple(bounded = false, color = PinggoPinkPrimary)
       ) { onClick() }
       .testTag(testTag),
     contentAlignment = Alignment.Center
@@ -297,13 +302,14 @@ fun GlassIconButton(
       imageVector = icon,
       contentDescription = contentDescription,
       tint = iconTint,
-      modifier = Modifier.size(20.dp)
+      modifier = Modifier.size(24.dp)
     )
   }
 }
 
 /**
- * Reusable GlassSearchBar
+ * Reusable GlassSearchBar.
+ * FIX: High contrast text and search icon.
  */
 @Composable
 fun GlassSearchBar(
@@ -314,16 +320,17 @@ fun GlassSearchBar(
   isDark: Boolean = isSystemInDarkTheme(),
   onClear: () -> Unit = { onQueryChange("") }
 ) {
-  val surfaceColor = if (isDark) Color(0x33FFFFFF) else Color(0xFFF2F2F7).copy(alpha = 0.8f)
-  val textColor = if (isDark) Color.White else PinggoBlack
-  val placeholderColor = PinggoGray
+  val surfaceColor = if(isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f)
+  val textColor = MaterialTheme.colorScheme.onBackground
+  val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
 
   Box(
     modifier = modifier
       .fillMaxWidth()
-      .height(48.dp)
-      .clip(RoundedCornerShape(24.dp))
+      .height(52.dp)
+      .clip(RoundedCornerShape(26.dp))
       .background(surfaceColor)
+      .border(BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.1f) else Color.Transparent), RoundedCornerShape(26.dp))
       .padding(horizontal = 16.dp),
     contentAlignment = Alignment.CenterStart
   ) {
@@ -335,25 +342,25 @@ fun GlassSearchBar(
         imageVector = Icons.Default.Search,
         contentDescription = "Search",
         tint = placeholderColor,
-        modifier = Modifier.size(18.dp)
+        modifier = Modifier.size(20.dp)
       )
-      Spacer(modifier = Modifier.width(10.dp))
+      Spacer(modifier = Modifier.width(12.dp))
       Box(modifier = Modifier.weight(1f)) {
         if (query.isEmpty()) {
-          Text(text = placeholder, color = placeholderColor, fontSize = 14.sp)
+          Text(text = placeholder, color = placeholderColor, style = MaterialTheme.typography.bodyLarge)
         }
         BasicTextField(
           value = query,
           onValueChange = onQueryChange,
           singleLine = true,
-          textStyle = TextStyle(color = textColor, fontSize = 14.sp),
+          textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor),
           cursorBrush = SolidColor(PinggoPinkPrimary),
           modifier = Modifier.fillMaxWidth().testTag("search_input")
         )
       }
       if (query.isNotEmpty()) {
-        IconButton(onClick = onClear, modifier = Modifier.size(26.dp)) {
-          Icon(Icons.Default.Clear, null, tint = placeholderColor, modifier = Modifier.size(16.dp))
+        IconButton(onClick = onClear, modifier = Modifier.size(28.dp)) {
+          Icon(Icons.Default.Clear, null, tint = placeholderColor, modifier = Modifier.size(18.dp))
         }
       }
     }
@@ -361,7 +368,8 @@ fun GlassSearchBar(
 }
 
 /**
- * Reusable GlassInput
+ * Reusable GlassInput.
+ * FIX: Higher contrast for input text and placeholders.
  */
 @Composable
 fun GlassInput(
@@ -377,18 +385,19 @@ fun GlassInput(
   singleLine: Boolean = true,
   maxLines: Int = 1,
   visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+  textAlign: TextAlign = TextAlign.Start,
   testTag: String = "glass_input"
 ) {
-  val surfaceColor = if (isDark) Color(0x33FFFFFF) else Color(0xFFF2F2F7).copy(alpha = 0.8f)
-  val textColor = if (isDark) Color.White else PinggoBlack
-  val placeholderColor = PinggoGray
+  val surfaceColor = if(isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
+  val textColor = MaterialTheme.colorScheme.onBackground
+  val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
 
   Box(
     modifier = modifier
       .fillMaxWidth()
-      .clip(RoundedCornerShape(20.dp))
+      .clip(RoundedCornerShape(18.dp))
       .background(surfaceColor)
-      .border(0.5.dp, Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+      .border(1.dp, if(isDark) Color.White.copy(alpha = 0.12f) else Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(18.dp))
       .padding(horizontal = 16.dp, vertical = 14.dp),
     contentAlignment = Alignment.CenterStart
   ) {
@@ -401,20 +410,26 @@ fun GlassInput(
           imageVector = leadingIcon,
           contentDescription = null,
           tint = placeholderColor,
-          modifier = Modifier.size(20.dp)
+          modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
       }
       Box(modifier = Modifier.weight(1f)) {
         if (value.isEmpty()) {
-          Text(text = placeholder, color = placeholderColor, fontSize = 15.sp)
+          Text(
+            text = placeholder, 
+            color = placeholderColor, 
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = textAlign, 
+            modifier = Modifier.fillMaxWidth()
+          )
         }
         BasicTextField(
           value = value,
           onValueChange = onValueChange,
           singleLine = singleLine,
           maxLines = maxLines,
-          textStyle = TextStyle(color = textColor, fontSize = 15.sp),
+          textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor, textAlign = textAlign),
           keyboardOptions = keyboardOptions,
           keyboardActions = keyboardActions,
           visualTransformation = visualTransformation,
@@ -431,7 +446,7 @@ fun GlassInput(
 }
 
 /**
- * Reusable GlassAvatar
+ * Reusable GlassAvatar.
  */
 @Composable
 fun GlassAvatar(
@@ -447,7 +462,7 @@ fun GlassAvatar(
   val borderBrush = if (hasStatusUpdate) {
     Brush.sweepGradient(listOf(PinggoPinkPrimary, PinggoPinkLight, PinggoPinkPrimary))
   } else {
-    Brush.verticalGradient(listOf(Color.LightGray.copy(alpha = 0.3f), Color.Transparent))
+    Brush.verticalGradient(listOf(Color.LightGray.copy(alpha = 0.4f), Color.Transparent))
   }
 
   val clickableModifier = if (onClick != null) {
@@ -462,7 +477,7 @@ fun GlassAvatar(
       modifier = Modifier
         .fillMaxSize()
         .clip(CircleShape)
-        .border(width = if (hasStatusUpdate) 2.5.dp else 0.5.dp, brush = borderBrush, shape = CircleShape)
+        .border(width = if (hasStatusUpdate) 2.5.dp else 1.dp, brush = borderBrush, shape = CircleShape)
         .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE2E8F0)),
       contentAlignment = Alignment.Center
     ) {
@@ -475,6 +490,7 @@ fun GlassAvatar(
         )
       } else {
         val initials = name.trim().split(" ")
+          .filter { it.isNotEmpty() }
           .mapNotNull { it.firstOrNull()?.toString() }
           .take(2)
           .joinToString("")
@@ -497,7 +513,7 @@ fun GlassAvatar(
           .align(Alignment.BottomEnd)
           .offset(x = 1.dp, y = 1.dp)
           .clip(CircleShape)
-          .background(if (isDark) PinggoBlack else Color.White)
+          .background(if (isDark) DarkBackground else Color.White)
           .padding(2.dp)
           .clip(CircleShape)
           .background(OnlinePink)
@@ -507,7 +523,8 @@ fun GlassAvatar(
 }
 
 /**
- * Reusable GlassChatBubble
+ * Reusable GlassChatBubble.
+ * FIX: Robust color logic for text in bubbles.
  */
 @Composable
 fun GlassChatBubble(
@@ -532,22 +549,23 @@ fun GlassChatBubble(
   } else {
     Brush.verticalGradient(
       listOf(
-        if (isDark) Color(0x1AFFFFFF) else Color.White,
-        if (isDark) Color(0x0DFFFFFF) else Color(0xFFF2F2F7)
+        if (isDark) Color(0xFF2C2C2E) else Color.White,
+        if (isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
       )
     )
   }
 
-  val textColor = if (isSent) Color.White else if (isDark) Color.White else PinggoBlack
-  val timeColor = if (isSent) Color.White.copy(alpha = 0.7f) else PinggoGray
-  val borderColor = if (isSent) Color.Transparent else Color.LightGray.copy(alpha = 0.2f)
+  // Sent messages always white text on pink. Received messages adaptive.
+  val textColor = if (isSent) Color.White else MaterialTheme.colorScheme.onBackground
+  val timeColor = if (isSent) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
+  val borderColor = if (isSent) Color.Transparent else if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.3f)
 
   Column(
     modifier = modifier
-      .shadow(elevation = 1.dp, shape = bubbleShape)
+      .shadow(elevation = 2.dp, shape = bubbleShape)
       .clip(bubbleShape)
       .background(backgroundBrush)
-      .border(BorderStroke(0.5.dp, borderColor), bubbleShape)
+      .border(BorderStroke(1.dp, borderColor), bubbleShape)
       .padding(horizontal = 14.dp, vertical = 10.dp)
   ) {
     if (!replySnippet.isNullOrEmpty()) {
@@ -555,20 +573,20 @@ fun GlassChatBubble(
         modifier = Modifier
           .fillMaxWidth()
           .clip(RoundedCornerShape(8.dp))
-          .background(Color.Black.copy(alpha = 0.1f))
-          .padding(start = 8.dp, top = 4.dp, bottom = 4.dp, end = 8.dp)
+          .background(if(isSent) Color.Black.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f))
+          .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = 8.dp)
       ) {
         Column {
           Text(
             text = replySender ?: "Pinggo User",
             color = if (isSent) PinggoPinkLight else PinggoPinkPrimary,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold
           )
           Text(
             text = replySnippet,
-            color = textColor.copy(alpha = 0.8f),
-            fontSize = 12.sp,
+            color = textColor.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
           )
@@ -580,8 +598,8 @@ fun GlassChatBubble(
     Text(
       text = text,
       color = textColor,
-      fontSize = 15.sp,
-      lineHeight = 21.sp
+      style = MaterialTheme.typography.bodyLarge,
+      lineHeight = 22.sp
     )
 
     Spacer(modifier = Modifier.height(4.dp))
@@ -590,12 +608,12 @@ fun GlassChatBubble(
       modifier = Modifier.align(Alignment.End),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      Text(text = timestamp, color = timeColor, fontSize = 11.sp)
+      Text(text = timestamp, color = timeColor, style = MaterialTheme.typography.labelSmall)
       if (isSent) {
         Spacer(modifier = Modifier.width(4.dp))
         Text(
           text = if (read) "✓✓" else if (delivered) "✓✓" else "✓",
-          color = if (read) Color(0xFF67E8F9) else Color.White.copy(alpha = 0.7f),
+          color = if (read) Color(0xFF67E8F9) else Color.White.copy(alpha = 0.8f),
           fontSize = 12.sp,
           fontWeight = FontWeight.Bold
         )
@@ -605,7 +623,7 @@ fun GlassChatBubble(
 }
 
 /**
- * Reusable Floating GlassBottomBar
+ * Reusable Floating GlassBottomBar.
  */
 @Composable
 fun GlassBottomBar(
@@ -613,7 +631,7 @@ fun GlassBottomBar(
   isDark: Boolean = isSystemInDarkTheme(),
   content: @Composable RowScope.() -> Unit
 ) {
-  val surfaceColor = if (isDark) Color(0xCC1C1C1E) else Color.White.copy(alpha = 0.95f)
+  val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
 
   Box(
     modifier = modifier
@@ -624,14 +642,14 @@ fun GlassBottomBar(
     Surface(
       shape = RoundedCornerShape(36.dp),
       color = surfaceColor,
-      border = BorderStroke(0.5.dp, Color.LightGray.copy(alpha = 0.3f)),
-      shadowElevation = 12.dp,
+      border = BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.4f)),
+      shadowElevation = 15.dp,
       modifier = Modifier.fillMaxWidth()
     ) {
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(horizontal = 8.dp, vertical = 6.dp),
+          .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically,
         content = content
@@ -641,7 +659,7 @@ fun GlassBottomBar(
 }
 
 /**
- * Reusable GlassToast
+ * Reusable GlassToast.
  */
 @Composable
 fun GlassToast(
@@ -650,27 +668,27 @@ fun GlassToast(
   isError: Boolean = false,
   isDark: Boolean = isSystemInDarkTheme()
 ) {
-  val surfaceColor = if (isError) Color(0xEE7F1D1D) else if (isDark) Color(0xEE1C1C1E) else Color(0xF0FFFFFF)
+  val surfaceColor = if (isError) Color(0xFFB91C1C) else if (isDark) Color(0xFF2C2C2E) else Color(0xFFF8F8FA)
   val borderColor = if (isError) Color.Red else PinggoPinkPrimary
-  val textColor = Color.White
+  val textColor = if (isError || isDark) Color.White else LightPrimaryText
 
   Surface(
     shape = RoundedCornerShape(26.dp),
     color = surfaceColor,
-    border = BorderStroke(1.dp, borderColor),
-    shadowElevation = 10.dp,
+    border = BorderStroke(2.dp, borderColor),
+    shadowElevation = 12.dp,
     modifier = modifier.padding(16.dp)
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+      modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      Text(text = if (isError) "⚠️ " else "✨ ", fontSize = 16.sp)
+      Text(text = if (isError) "⚠️ " else "✨ ", fontSize = 18.sp)
       Text(
         text = message,
-        color = if (isError || isDark) Color.White else PinggoBlack,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Medium
+        color = textColor,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Bold
       )
     }
   }

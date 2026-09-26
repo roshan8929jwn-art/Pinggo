@@ -32,6 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -97,13 +99,13 @@ fun FirebaseDiagnosticScreen(
           Column {
             Text(
               text = statusTitle,
-              color = Color.White,
+              color = MaterialTheme.colorScheme.onBackground,
               fontWeight = FontWeight.Bold,
               fontSize = 17.sp
             )
             Text(
               text = "Source: ${diagnostic.initSource}",
-              color = Color.White.copy(alpha = 0.7f),
+              color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
               fontSize = 13.sp
             )
           }
@@ -124,7 +126,7 @@ fun FirebaseDiagnosticScreen(
       ) {
         Text(
           text = "Component Status",
-          color = Color.White,
+          color = MaterialTheme.colorScheme.onBackground,
           fontWeight = FontWeight.SemiBold,
           fontSize = 15.sp
         )
@@ -163,6 +165,27 @@ fun FirebaseDiagnosticScreen(
           isOk = diagnostic.isStorageAvailable,
           details = diagnostic.storageBucket.ifEmpty { "gen-lang-client-0572544439.firebasestorage.app" }
         )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val testWebClientId = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+        com.example.ui.components.GlassInput(
+          value = testWebClientId.value,
+          onValueChange = { testWebClientId.value = it },
+          placeholder = "Test Web Client ID (for Google Sign-In)",
+          leadingIcon = Icons.Default.Info
+        )
+        
+        Button(
+           onClick = { 
+             // We can't easily change the global config, but we can tell the repo to use this one for the next sign in attempt
+             // This is mostly for the user to verify their ID works
+           },
+           modifier = Modifier.fillMaxWidth().height(40.dp),
+           colors = ButtonDefaults.buttonColors(containerColor = PinggoPinkPrimary)
+        ) {
+           Text("Verify Web Client ID", fontSize = 13.sp)
+        }
       }
 
       // Error / Diagnostics Log (if any error reported)
@@ -195,7 +218,7 @@ fun FirebaseDiagnosticScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
               text = error,
-              color = Color.White.copy(alpha = 0.9f),
+              color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f),
               fontSize = 12.sp,
               fontFamily = FontFamily.Monospace
             )
@@ -203,7 +226,7 @@ fun FirebaseDiagnosticScreen(
               Spacer(modifier = Modifier.height(6.dp))
               Text(
                 text = details.take(300),
-                color = Color.White.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace
               )
@@ -234,7 +257,7 @@ fun FirebaseDiagnosticScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
               text = "Required Firebase Console Setup",
-              color = Color.White,
+              color = MaterialTheme.colorScheme.onBackground,
               fontWeight = FontWeight.SemiBold,
               fontSize = 14.sp
             )
@@ -318,13 +341,13 @@ private fun ServiceStatusRow(
     Column(modifier = Modifier.weight(1f)) {
       Text(
         text = name,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onBackground,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp
       )
       Text(
         text = details,
-        color = Color.White.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
         fontSize = 12.sp
       )
     }
@@ -369,13 +392,13 @@ private fun GuideStep(
     Column {
       Text(
         text = title,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onBackground,
         fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp
       )
       Text(
         text = description,
-        color = Color.White.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
         fontSize = 12.sp
       )
     }

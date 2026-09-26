@@ -856,6 +856,64 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  fun sendOtp(email: String) {
+    viewModelScope.launch {
+      val res = authRepo.sendOtp(email)
+      if (res.isSuccess) {
+        showToast("OTP sent to $email")
+      } else {
+        showToast("Failed to send OTP: ${res.exceptionOrNull()?.message}")
+      }
+    }
+  }
+
+  fun verifyOtp(email: String, otp: String, onResult: (Boolean) -> Unit) {
+    viewModelScope.launch {
+      val res = authRepo.verifyOtp(email, otp)
+      if (res.isSuccess) {
+        showToast("OTP Verified! ✨")
+        onResult(true)
+      } else {
+        showToast(res.exceptionOrNull()?.message ?: "Verification failed")
+        onResult(false)
+      }
+    }
+  }
+
+  fun sendPasswordResetEmail(email: String, onResult: (Boolean, String?) -> Unit) {
+    val trimmed = email.trim()
+    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(trimmed).matches()) {
+      onResult(false, "Please enter a valid email address")
+      return
+    }
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      val res = authRepo.sendPasswordResetEmail(trimmed)
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        showToast("Password reset email sent to $trimmed")
+        onResult(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Failed to send reset email"
+        onResult(false, err)
+      }
+    }
+  }
+
+  fun updatePassword(newPass: String, onResult: (Boolean, String?) -> Unit) {
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      val res = authRepo.updatePassword(newPass)
+      _isAuthLoading.value = false
+      if (res.isSuccess) {
+        onResult(true, null)
+      } else {
+        val err = res.exceptionOrNull()?.message ?: "Failed to update password"
+        onResult(false, err)
+      }
+    }
+  }
+
   fun sendSignInLinkToEmail(email: String, onResult: (Boolean, String?) -> Unit) {
     val trimmed = email.trim()
     if (!android.util.Patterns.EMAIL_ADDRESS.matcher(trimmed).matches()) {

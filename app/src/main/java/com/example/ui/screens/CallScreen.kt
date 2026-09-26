@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -95,13 +96,13 @@ fun CallScreen(
           text = targetName.ifEmpty { "Pinggo Contact" },
           fontSize = 28.sp,
           fontWeight = FontWeight.Bold,
-          color = Color.White
+          color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
           text = if (isIncoming) "Incoming ${call.type} call..." else if (call.status == "ringing") "Ringing..." else String.format("%02d:%02d", durationSec / 60, durationSec % 60),
           fontSize = 16.sp,
-          color = Color(0xCCFFFFFF),
+          color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
           fontWeight = FontWeight.Medium
         )
       }
@@ -241,7 +242,7 @@ fun CallActionButton(
     Spacer(modifier = Modifier.height(6.dp))
     Text(
       text = label,
-      color = Color.White,
+      color = MaterialTheme.colorScheme.onBackground,
       fontSize = 12.sp,
       fontWeight = FontWeight.Medium
     )

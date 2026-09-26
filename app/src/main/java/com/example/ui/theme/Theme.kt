@@ -23,47 +23,43 @@ enum class GlassDesign {
 
 val LocalGlassDesign = staticCompositionLocalOf { GlassDesign.CLEAR }
 
-private val LightColorScheme =
-  lightColorScheme(
-    primary = PinggoPinkPrimary,
-    onPrimary = PinggoWhite,
-    primaryContainer = PinggoPinkLight,
-    onPrimaryContainer = PinggoPinkDeep,
-    secondary = PinggoPinkLight,
-    onSecondary = PinggoBlack,
-    tertiary = PinggoPinkLight,
-    background = PinggoOffWhite,
-    onBackground = PinggoBlack,
-    surface = GlassSurface,
-    onSurface = PinggoBlack,
-    surfaceVariant = GlassCard,
-    onSurfaceVariant = PinggoGray,
-    outline = GlassBorder,
-    error = DestructiveRed,
-    onError = PinggoWhite
-  )
+private val LightColorScheme = lightColorScheme(
+  primary = PinggoPinkPrimary,
+  onPrimary = Color.White,
+  primaryContainer = PinggoPinkLight,
+  onPrimaryContainer = PinggoPinkDeep,
+  secondary = PinggoPinkPrimary,
+  onSecondary = Color.White,
+  tertiary = PinggoPinkLight,
+  background = PinggoOffWhite,
+  onBackground = LightPrimaryText,
+  surface = Color.White,
+  onSurface = LightPrimaryText,
+  surfaceVariant = Color(0xFFF0F0F0),
+  onSurfaceVariant = LightSecondaryText,
+  outline = GlassBorder,
+  error = DestructiveRed,
+  onError = Color.White
+)
 
-// For now, we'll use a slightly darker version of the pink theme for "Dark" if requested, 
-// but the user specified a clean white/pink theme as default.
-private val DarkColorScheme =
-  darkColorScheme(
-    primary = PinggoPinkPrimary,
-    onPrimary = PinggoWhite,
-    primaryContainer = PinggoPinkDeep,
-    onPrimaryContainer = PinggoPinkLight,
-    secondary = PinggoPinkLight,
-    onSecondary = PinggoBlack,
-    tertiary = PinggoPinkLight,
-    background = PinggoBlack,
-    onBackground = PinggoWhite,
-    surface = Color(0xCC1C1C1E),
-    onSurface = PinggoWhite,
-    surfaceVariant = Color(0x992C2C2E),
-    onSurfaceVariant = PinggoLightGray,
-    outline = Color(0x4DFF69B4),
-    error = DestructiveRed,
-    onError = PinggoWhite
-  )
+private val DarkColorScheme = darkColorScheme(
+  primary = PinggoPinkPrimary,
+  onPrimary = Color.White,
+  primaryContainer = PinggoPinkDeep,
+  onPrimaryContainer = PinggoPinkLight,
+  secondary = PinggoPinkPrimary,
+  onSecondary = Color.White,
+  tertiary = PinggoPinkLight,
+  background = DarkBackground,
+  onBackground = DarkPrimaryText,
+  surface = DarkSurface,
+  onSurface = DarkPrimaryText,
+  surfaceVariant = Color(0xFF2C2C2E),
+  onSurfaceVariant = DarkSecondaryText,
+  outline = PinggoPinkGlow,
+  error = DestructiveRed,
+  onError = Color.White
+)
 
 @Composable
 fun PinggoTheme(

@@ -205,9 +205,9 @@ fun HomeNavItem(
     Spacer(modifier = Modifier.height(2.dp))
     Text(
       text = label,
-      fontSize = 11.sp,
-      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-      color = if (isSelected) PinggoPinkPrimary else Color.Gray
+      style = MaterialTheme.typography.labelSmall,
+      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Bold,
+      color = if (isSelected) PinggoPinkPrimary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
     )
   }
 }
@@ -308,6 +308,14 @@ fun ChatsTab(
               }
             )
             DropdownMenuItem(
+              text = { Text("Invite Friends") },
+              leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+              onClick = {
+                showMenu = false
+                // Logic will be implemented in a helper or directly here
+              }
+            )
+            DropdownMenuItem(
               text = { Text("Settings") },
               leadingIcon = { Icon(Icons.Default.Settings, null) },
               onClick = {
@@ -352,9 +360,9 @@ fun ChatsTab(
         ) {
           Text(
             text = filter,
-            color = if (isActive) Color.White else Color(0xCCFFFFFF),
-            fontSize = 13.sp,
-            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (isActive) Color.White else MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
           )
         }
@@ -380,15 +388,15 @@ fun ChatsTab(
           Spacer(modifier = Modifier.height(16.dp))
           Text(
             text = "No conversations yet",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
           )
           Spacer(modifier = Modifier.height(6.dp))
           Text(
             text = "Tap search or '+' to find registered Pinggo friends!",
             fontSize = 13.sp,
-            color = PinggoMintUltraLight
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
           )
         }
       }
@@ -433,16 +441,16 @@ fun ChatsTab(
                 ) {
                   Text(
                     text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                   )
                   Text(
                     text = formatTimestamp(conv.lastMessageTimestamp),
                     fontSize = 11.sp,
-                    color = PinggoMintUltraLight.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                   )
                 }
 
@@ -455,8 +463,8 @@ fun ChatsTab(
                 ) {
                   Text(
                     text = conv.lastMessage.ifEmpty { "Start a conversation" },
-                    fontSize = 13.sp,
-                    color = Color(0xCCFFFFFF),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -514,9 +522,9 @@ fun ChatsTab(
         Spacer(modifier = Modifier.width(8.dp))
         Text(
           text = "Add Username",
-          fontSize = 14.sp,
-          fontWeight = FontWeight.SemiBold,
-          color = Color.White
+          style = MaterialTheme.typography.labelLarge,
+          fontWeight = FontWeight.Bold,
+          color = PinggoPinkPrimary
         )
       }
     }
@@ -544,9 +552,9 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
       Spacer(modifier = Modifier.width(10.dp))
       Text(
         text = "Calls",
-        fontSize = 24.sp,
+        style = MaterialTheme.typography.headlineLarge,
         fontWeight = FontWeight.Bold,
-        color = Color.White
+        color = MaterialTheme.colorScheme.onBackground
       )
     }
 
@@ -573,14 +581,14 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
           Text(
             text = "Start a Call",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
           )
           Text(
             text = "Select a contact to audio or video call",
             fontSize = 13.sp,
-            color = PinggoMintUltraLight
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
           )
         }
       }
@@ -590,9 +598,9 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
 
     Text(
       text = "Recent calls",
-      fontSize = 14.sp,
-      fontWeight = FontWeight.SemiBold,
-      color = PinggoMintUltraLight,
+      style = MaterialTheme.typography.labelLarge,
+      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
       modifier = Modifier.padding(bottom = 8.dp)
     )
 
@@ -616,15 +624,15 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
           Spacer(modifier = Modifier.height(12.dp))
           Text(
             text = "No calls yet",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
           )
           Spacer(modifier = Modifier.height(6.dp))
           Text(
             text = "Voice and video calls with your contacts will appear here",
             fontSize = 13.sp,
-            color = PinggoMintUltraLight,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
           )
         }
@@ -656,9 +664,9 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
               Column(modifier = Modifier.weight(1f)) {
                 Text(
                   text = otherName.ifEmpty { "Pinggo Contact" },
-                  fontSize = 15.sp,
-                  fontWeight = FontWeight.SemiBold,
-                  color = Color.White
+                  style = MaterialTheme.typography.bodyLarge,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurface
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                   Icon(
@@ -671,7 +679,7 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
                   Text(
                     text = "$statusText • $timeText",
                     fontSize = 12.sp,
-                    color = Color(0xCCFFFFFF)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                   )
                 }
               }
@@ -726,7 +734,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
         text = "Updates",
         fontSize = 24.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.White
+        color = MaterialTheme.colorScheme.onBackground
       )
     }
 
@@ -768,12 +776,12 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
             text = "My Status",
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onSurface
           )
           Text(
             text = if (myUpdates.isNotEmpty()) "Tap to update or view status" else "Tap to add status update",
             fontSize = 13.sp,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
           )
         }
         Row {
@@ -865,7 +873,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
         text = "My active status updates",
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
-        color = PinggoMintUltraLight,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
         modifier = Modifier.padding(bottom = 6.dp)
       )
 
@@ -890,7 +898,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                 Text(
                   text = formatTimestamp(myUpdate.timestamp),
                   fontSize = 11.sp,
-                  color = PinggoMintUltraLight
+                  color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
               }
 
@@ -944,7 +952,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
       text = "Recent updates",
       fontSize = 14.sp,
       fontWeight = FontWeight.SemiBold,
-      color = PinggoMintUltraLight,
+      color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
       modifier = Modifier.padding(bottom = 8.dp)
     )
 
@@ -959,7 +967,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
           Text(
             text = "No recent updates from contacts",
             fontSize = 13.sp,
-            color = Color(0xCCFFFFFF)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
           )
         }
       }
@@ -996,14 +1004,14 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                 Text(
                   text = update.text,
                   fontSize = 13.sp,
-                  color = Color(0xCCFFFFFF),
+                  color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                   maxLines = 2,
                   overflow = TextOverflow.Ellipsis
                 )
                 Text(
                   text = formatTimestamp(update.timestamp),
                   fontSize = 11.sp,
-                  color = PinggoMintUltraLight
+                  color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
               }
             }
@@ -1071,7 +1079,7 @@ fun StatusDetailDialog(
             Text(
               text = formatTimestamp(status.timestamp),
               fontSize = 12.sp,
-              color = PinggoMintUltraLight
+              color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
           }
           IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
@@ -1151,7 +1159,7 @@ fun StatusViewersDialog(
               text = "Viewed by ${viewers.size}",
               fontSize = 18.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = MaterialTheme.colorScheme.onSurface
             )
           }
           IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
@@ -1180,7 +1188,7 @@ fun StatusViewersDialog(
             Text(
               text = "No one has viewed this status yet",
               fontSize = 13.sp,
-              color = Color(0xCCFFFFFF)
+              color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
           }
         } else {
@@ -1221,7 +1229,7 @@ fun StatusViewersDialog(
                 Text(
                   text = formatTimestamp(viewer.viewedAt),
                   fontSize = 11.sp,
-                  color = PinggoMintUltraLight
+                  color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
               }
             }
@@ -1293,7 +1301,7 @@ fun ProfileTab(
           text = user?.displayName?.ifEmpty { "Pinggo User" } ?: "Pinggo User",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color.White
+          color = MaterialTheme.colorScheme.onSurface
         )
         Text(
           text = "@${user?.username ?: "username"}",
@@ -1305,7 +1313,7 @@ fun ProfileTab(
         Text(
           text = user?.bio?.ifEmpty { "Living the best version of myself ✨" } ?: "Living the best version of myself ✨",
           fontSize = 13.sp,
-          color = Color.Gray
+          color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -1362,17 +1370,58 @@ fun ProfileTab(
               text = title,
               fontSize = 15.sp,
               fontWeight = FontWeight.Medium,
-              color = Color.Black,
+              color = MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.weight(1f)
             )
             Icon(
               imageVector = Icons.Default.ChevronRight,
               contentDescription = null,
-              tint = Color.Gray,
+              tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
               modifier = Modifier.size(18.dp)
             )
           }
         }
+      }
+
+      item {
+        val context = LocalContext.current
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Follow Developer on Instagram
+        com.example.ui.components.GlassButton(
+          text = "Follow Developer on Instagram",
+          icon = Icons.Default.Person, // Using Person icon for profile
+          isPrimary = false,
+          onClick = {
+            val instagramUrl = "https://www.instagram.com/ivroshan?stkn=MTl4cTR3dm1lMml5cA=="
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(instagramUrl))
+            intent.setPackage("com.instagram.android")
+            try {
+              context.startActivity(intent)
+            } catch (e: Exception) {
+              context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(instagramUrl)))
+            }
+          },
+          modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Invite Friends
+        com.example.ui.components.GlassButton(
+          text = "Invite Friends",
+          icon = Icons.Default.PersonAdd,
+          isPrimary = false,
+          onClick = {
+            val inviteMsg = "Hey! Join me on Pinggo — Same Vibes, New Experience. Let's chat and share updates together!"
+            val intent = Intent(Intent.ACTION_SEND).apply {
+              type = "text/plain"
+              putExtra(Intent.EXTRA_TEXT, inviteMsg)
+            }
+            context.startActivity(Intent.createChooser(intent, "Invite Friends via"))
+          },
+          modifier = Modifier.fillMaxWidth()
+        )
       }
 
       item {
@@ -1430,7 +1479,7 @@ fun SignOutConfirmationDialog(
           text = "Are you sure you want to log out your account?",
           fontSize = 16.sp,
           fontWeight = FontWeight.Medium,
-          color = Color.Black,
+          color = MaterialTheme.colorScheme.onSurface,
           textAlign = TextAlign.Center
         )
 
@@ -1505,13 +1554,13 @@ fun EditProfileDialog(
             text = "Edit Profile",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
           )
           IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
             Icon(
               imageVector = Icons.Default.Close,
               contentDescription = "Close",
-              tint = Color.White,
+              tint = MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.size(20.dp)
             )
           }
@@ -1586,7 +1635,7 @@ fun EditProfileDialog(
             text = "Display Name",
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = PinggoMintUltraLight,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
           )
           com.example.ui.components.GlassInput(
@@ -1605,7 +1654,7 @@ fun EditProfileDialog(
             text = "Username",
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = PinggoMintUltraLight,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
           )
           com.example.ui.components.GlassInput(
@@ -1658,7 +1707,7 @@ fun EditProfileDialog(
             text = "Bio",
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = PinggoMintUltraLight,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
           )
           com.example.ui.components.GlassInput(

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,14 +22,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -40,6 +41,7 @@ import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.theme.PinggoPinkPrimary
 import com.example.ui.theme.PinggoPinkLight
 import com.example.viewmodel.PinggoViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun ProfileSetupScreen(
@@ -50,7 +52,7 @@ fun ProfileSetupScreen(
   val isLoading by viewModel.isAuthLoading.collectAsState()
   val usernameCheckState by viewModel.usernameCheckState.collectAsState()
 
-  var currentStep by remember { mutableStateOf(1) } // 1: Info, 2: Password, 3: Verification
+  var currentStep by remember { mutableStateOf(1) } // 1: Info, 2: Password, 3: OTP
 
   var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
   var username by remember { mutableStateOf("") }
@@ -61,13 +63,14 @@ fun ProfileSetupScreen(
   var confirmPassword by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
 
+  var otpValue by remember { mutableStateOf("") }
+  var isOtpVerified by remember { mutableStateOf(false) }
+
   val photoPickerLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
   ) { uri: Uri? ->
     selectedImageUri = uri
   }
-
-  val focusManager = LocalFocusManager.current
 
   LaunchedEffect(username) {
     val bare = username.trim().removePrefix("@")
@@ -96,7 +99,7 @@ fun ProfileSetupScreen(
         IconButton(onClick = { 
           if (currentStep > 1) currentStep--
         }, modifier = Modifier.size(40.dp)) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.Black)
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground)
         }
         Spacer(modifier = Modifier.width(6.dp))
         PinggoBubbleIcon(size = 32.dp)
@@ -106,20 +109,19 @@ fun ProfileSetupScreen(
             text = when(currentStep) {
               1 -> "Create Your Profile"
               2 -> "Security Setup"
-              else -> "Email Verification"
+              else -> "Email OTP Verification"
             },
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
           )
           Text(
             text = when(currentStep) {
               1 -> "Tell us about yourself"
               2 -> "Set your password"
-              else -> "Verify your Gmail address"
+              else -> "Enter the 6-digit code sent to your email"
             },
-            fontSize = 13.sp,
-            color = Color.Gray
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
           )
         }
       }
@@ -138,7 +140,7 @@ fun ProfileSetupScreen(
                   colors = listOf(PinggoPinkLight.copy(alpha = 0.3f), Color.Transparent)
                 )
               )
-              .border(2.dp, Color.LightGray, CircleShape)
+              .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
               .clickable { photoPickerLauncher.launch("image/*") },
             contentAlignment = Alignment.Center
           ) {
@@ -160,7 +162,7 @@ fun ProfileSetupScreen(
               Icon(
                 imageVector = Icons.Default.CameraAlt,
                 contentDescription = "Add photo",
-                tint = Color.Gray,
+                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                 modifier = Modifier.size(36.dp)
               )
             }
@@ -169,7 +171,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(30.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Display Name", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text(text = "Display Name", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             GlassInput(
               value = displayName,
               onValueChange = { displayName = it },
@@ -181,7 +183,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(18.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Username", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text(text = "Username", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             GlassInput(
               value = username,
               onValueChange = { input ->
@@ -194,7 +196,7 @@ fun ProfileSetupScreen(
                 if (username.length >= 3) {
                   when (usernameCheckState) {
                     true -> Icon(Icons.Default.Check, "Available", tint = Color(0xFF22C55E), modifier = Modifier.size(20.dp))
-                    false -> Icon(Icons.Default.Close, "Taken", tint = Color.Red, modifier = Modifier.size(20.dp))
+                    false -> Icon(Icons.Default.Close, "Taken", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                     null -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PinggoPinkPrimary)
                   }
                 }
@@ -204,7 +206,7 @@ fun ProfileSetupScreen(
             Text(
               text = "Lowercase, numbers, and underscores only.",
               fontSize = 11.sp,
-              color = Color.Gray,
+              color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
               modifier = Modifier.padding(top = 4.dp)
             )
           }
@@ -212,7 +214,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(18.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Bio (optional)", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text(text = "Bio (optional)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             GlassInput(
               value = bio,
               onValueChange = { bio = it },
@@ -247,7 +249,7 @@ fun ProfileSetupScreen(
         2 -> {
           // Password Setup Step
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Set Password", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text(text = "Set Password", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             GlassInput(
               value = password,
               onValueChange = { password = it },
@@ -266,7 +268,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(18.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Confirm Password", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text(text = "Confirm Password", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             GlassInput(
               value = confirmPassword,
               onValueChange = { confirmPassword = it },
@@ -280,7 +282,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(36.dp))
 
           GlassButton(
-            text = "Continue",
+            text = "Continue to OTP",
             onClick = {
               if (password.length < 8) {
                 viewModel.showToast("Password must be at least 8 characters")
@@ -291,11 +293,12 @@ fun ProfileSetupScreen(
                 return@GlassButton
               }
               
-              // Proceed to verification or creation
-              if (currentUser?.isEmailVerified == true) {
-                 createProfile(viewModel, displayName, username, bio, selectedImageUri, password, onProfileCreated)
-              } else {
+              val email = currentUser?.email
+              if (email != null) {
+                viewModel.sendOtp(email)
                 currentStep = 3
+              } else {
+                viewModel.showToast("No email associated with this account")
               }
             },
             modifier = Modifier.fillMaxWidth()
@@ -303,26 +306,38 @@ fun ProfileSetupScreen(
         }
 
         3 -> {
-          // Email Verification Step
+          // OTP Entry Step
           Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.Email, null, tint = PinggoPinkPrimary, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-              text = "Verification email sent to ${currentUser?.email}. Please check your Gmail inbox and tap the link to continue.",
+              text = "Check your email ${currentUser?.email} for a 6-digit code.",
               textAlign = TextAlign.Center,
-              color = Color.Black
+              style = MaterialTheme.typography.bodyLarge,
+              color = MaterialTheme.colorScheme.onBackground
             )
             
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            OtpInputFields(
+              otpValue = otpValue,
+              onOtpChange = { otpValue = it }
+            )
+
             Spacer(modifier = Modifier.height(32.dp))
             
             GlassButton(
-              text = "Refresh Status",
+              text = "Verify & Finish",
+              isLoading = isLoading,
               onClick = {
-                viewModel.currentUser.value?.reload()?.addOnCompleteListener {
-                  if (viewModel.currentUser.value?.isEmailVerified == true) {
+                if (otpValue.length != 6) {
+                  viewModel.showToast("Please enter the 6-digit OTP")
+                  return@GlassButton
+                }
+                val email = currentUser?.email ?: return@GlassButton
+                viewModel.verifyOtp(email, otpValue) { success ->
+                  if (success) {
                     createProfile(viewModel, displayName, username, bio, selectedImageUri, password, onProfileCreated)
-                  } else {
-                    viewModel.showToast("Email not yet verified. Please check your inbox.")
                   }
                 }
               },
@@ -331,8 +346,25 @@ fun ProfileSetupScreen(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            TextButton(onClick = { viewModel.resendVerificationEmail() }) {
-              Text("Resend Verification Email", color = PinggoPinkPrimary)
+            var resendCooldown by remember { mutableStateOf(0) }
+            LaunchedEffect(resendCooldown) {
+              if (resendCooldown > 0) {
+                delay(1000)
+                resendCooldown--
+              }
+            }
+
+            TextButton(
+              enabled = resendCooldown == 0,
+              onClick = { 
+                currentUser?.email?.let { viewModel.sendOtp(it) }
+                resendCooldown = 60
+              }
+            ) {
+              Text(
+                text = if (resendCooldown > 0) "Resend OTP in ${resendCooldown}s" else "Resend OTP Code",
+                color = if (resendCooldown > 0) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f) else PinggoPinkPrimary
+              )
             }
           }
         }
@@ -356,4 +388,92 @@ private fun createProfile(
   viewModel.createProfile(displayName, username, bio, photo, password) {
     onComplete()
   }
+}
+
+@Composable
+fun OtpInputFields(
+  otpValue: String,
+  onOtpChange: (String) -> Unit
+) {
+  val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+  val focusRequesters = remember { List(6) { androidx.compose.ui.focus.FocusRequester() } }
+
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    (0 until 6).forEach { index ->
+      val char = otpValue.getOrNull(index)?.toString() ?: ""
+      
+      Box(
+        modifier = Modifier
+          .size(46.dp)
+          .clip(RoundedCornerShape(12.dp))
+          .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+          .border(
+            width = 1.dp,
+            color = if (otpValue.length == index) PinggoPinkPrimary else Color.Transparent,
+            shape = RoundedCornerShape(12.dp)
+          )
+          .clickable { focusRequesters[index].requestFocus() },
+        contentAlignment = Alignment.Center
+      ) {
+        androidx.compose.foundation.text.BasicTextField(
+          value = char,
+          onValueChange = { newValue ->
+            if (newValue.length <= 1) {
+              val currentOtp = otpValue.toCharArray().toMutableList()
+              if (newValue.isEmpty()) {
+                if (index < currentOtp.size) currentOtp.removeAt(index)
+                if (index > 0) focusRequesters[index - 1].requestFocus()
+              } else {
+                if (index < currentOtp.size) {
+                  currentOtp[index] = newValue[0]
+                } else {
+                  currentOtp.add(newValue[0])
+                }
+                if (index < 5) focusRequesters[index + 1].requestFocus()
+              }
+              onOtpChange(currentOtp.joinToString(""))
+            }
+          },
+          modifier = Modifier
+            .fillMaxSize()
+            .wrapContentHeight()
+            .focusRequester(focusRequesters[index])
+            .testTag("otp_digit_$index"),
+          textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
+          ),
+          keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = if (index == 5) ImeAction.Done else ImeAction.Next
+          ),
+          singleLine = true
+        )
+        
+        if (char.isEmpty()) {
+          Box(
+            modifier = Modifier
+              .size(8.dp)
+              .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), CircleShape)
+          )
+        }
+      }
+    }
+  }
+  
+  // Invisible field to handle pasting
+  BasicTextField(
+    value = "",
+    onValueChange = { pasted ->
+      if (pasted.length == 6 && pasted.all { it.isDigit() }) {
+        onOtpChange(pasted)
+        focusManager.clearFocus()
+      }
+    },
+    modifier = Modifier.size(0.dp)
+  )
 }

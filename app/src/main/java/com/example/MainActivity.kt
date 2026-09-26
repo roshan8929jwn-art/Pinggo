@@ -38,6 +38,7 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.ProfileSetupScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.SignUpScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.PinggoTheme
@@ -52,7 +53,8 @@ enum class PinggoScreen {
   USER_SEARCH,
   CREATE_GROUP,
   SETTINGS,
-  DIAGNOSTIC
+  DIAGNOSTIC,
+  SIGN_UP
 }
 
 class MainActivity : ComponentActivity() {
@@ -152,6 +154,22 @@ class MainActivity : ComponentActivity() {
                   },
                   onOpenDiagnostics = {
                     currentScreen = PinggoScreen.DIAGNOSTIC
+                  },
+                  onSignUpRequested = {
+                    currentScreen = PinggoScreen.SIGN_UP
+                  }
+                )
+              }
+
+              PinggoScreen.SIGN_UP -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.LOGIN
+                }
+                SignUpScreen(
+                  viewModel = viewModel,
+                  onBack = { currentScreen = PinggoScreen.LOGIN },
+                  onSignedUp = {
+                    currentScreen = PinggoScreen.PROFILE_SETUP
                   }
                 )
               }

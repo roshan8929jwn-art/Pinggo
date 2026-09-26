@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -91,7 +92,7 @@ fun PinggoWordmark(
     text = buildAnnotatedString {
       withStyle(
         SpanStyle(
-          color = Color.Black,
+          color = MaterialTheme.colorScheme.onBackground,
           fontWeight = FontWeight.Bold
         )
       ) {
@@ -119,13 +120,14 @@ fun PinggoWordmark(
 fun PinggoTagline(
   modifier: Modifier = Modifier,
   fontSize: TextUnit = 12.sp,
-  color: Color = Color.Gray
+  color: Color? = null
 ) {
+  val textColor = color ?: MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
   Text(
     text = "Chat • Connect • Together",
     fontSize = fontSize,
     fontWeight = FontWeight.Medium,
-    color = color,
+    color = textColor,
     letterSpacing = 1.sp,
     textAlign = TextAlign.Center,
     modifier = modifier
@@ -208,7 +210,7 @@ fun PinggoFullLogo(
         text = subtitle,
         fontSize = 14.sp,
         fontWeight = FontWeight.Medium,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
         textAlign = TextAlign.Center
       )
     }

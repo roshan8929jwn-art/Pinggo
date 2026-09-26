@@ -17,9 +17,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,9 +32,11 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,7 +49,7 @@ import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.components.PinggoFullLogo
 import com.example.ui.theme.AppThemeMode
-import com.example.ui.theme.PinggoEmeraldPrimary
+import com.example.ui.theme.PinggoPinkPrimary
 import com.example.viewmodel.PinggoViewModel
 
 @Composable
@@ -73,7 +79,7 @@ fun SettingsScreen(
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
-            tint = Color.White
+            tint = MaterialTheme.colorScheme.onBackground
           )
         }
         Spacer(modifier = Modifier.width(6.dp))
@@ -84,12 +90,13 @@ fun SettingsScreen(
             "privacy" -> "Privacy"
             "notifications" -> "Notifications"
             "appearance" -> "Appearance"
+            "security" -> "Security"
             "about" -> "About Pinggo"
             else -> "Settings"
           },
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color.White
+          color = MaterialTheme.colorScheme.onBackground
         )
       }
 
@@ -101,7 +108,7 @@ fun SettingsScreen(
             text = "Theme Mode",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -134,7 +141,7 @@ fun SettingsScreen(
             text = "Glass Design",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -174,7 +181,7 @@ fun SettingsScreen(
             text = "Last Seen Visibility",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -196,7 +203,7 @@ fun SettingsScreen(
                   Text(
                     text = label,
                     fontSize = 15.sp,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                   )
                   RadioButton(
@@ -219,7 +226,7 @@ fun SettingsScreen(
             text = "Read Receipts",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -236,12 +243,12 @@ fun SettingsScreen(
                   text = "Send Read Receipts",
                   fontSize = 15.sp,
                   fontWeight = FontWeight.Medium,
-                  color = Color.White
+                  color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                   text = if (user?.privacyReadReceipts != false) "On • Senders see when messages are read" else "Off • No read status sent or seen",
                   fontSize = 12.sp,
-                  color = Color(0xCCFFFFFF)
+                  color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
               }
               Switch(
@@ -262,7 +269,7 @@ fun SettingsScreen(
             text = "Status Privacy",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -284,7 +291,7 @@ fun SettingsScreen(
                   Text(
                     text = label,
                     fontSize = 15.sp,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                   )
                   RadioButton(
@@ -307,7 +314,7 @@ fun SettingsScreen(
             text = "Blocked Users (${blockedUsers.size})",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -317,7 +324,7 @@ fun SettingsScreen(
                 Text(
                   text = "No blocked users",
                   fontSize = 14.sp,
-                  color = Color(0xCCFFFFFF)
+                  color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
               }
             }
@@ -342,12 +349,12 @@ fun SettingsScreen(
                         text = blockedUser.displayName.ifEmpty { blockedUser.username },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                       )
                       Text(
                         text = "@${blockedUser.username}",
                         fontSize = 12.sp,
-                        color = com.example.ui.theme.PinggoMint
+                        color = PinggoPinkPrimary
                       )
                     }
                     com.example.ui.components.GlassButton(
@@ -367,7 +374,7 @@ fun SettingsScreen(
             text = "Message Notifications",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -379,8 +386,8 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(text = "Direct Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                  Text(text = "Receive alerts for one-on-one chats", fontSize = 12.sp, color = Color(0xCCFFFFFF))
+                  Text(text = "Direct Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                  Text(text = "Receive alerts for one-on-one chats", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
                 Switch(
                   checked = user?.notificationMessage ?: true,
@@ -401,8 +408,8 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(text = "Group Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                  Text(text = "Receive alerts for group chats", fontSize = 12.sp, color = Color(0xCCFFFFFF))
+                  Text(text = "Group Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                  Text(text = "Receive alerts for group chats", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
                 Switch(
                   checked = user?.notificationGroup ?: true,
@@ -423,8 +430,8 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(text = "Show Notification Preview", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                  Text(text = "Preview message text inside lockscreen notification banner", fontSize = 12.sp, color = Color(0xCCFFFFFF))
+                  Text(text = "Show Notification Preview", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                  Text(text = "Preview message text inside lockscreen notification banner", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
                 Switch(
                   checked = user?.notificationPreview ?: true,
@@ -445,7 +452,7 @@ fun SettingsScreen(
             text = "Call Notifications",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xCCFFFFFF),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -458,8 +465,8 @@ fun SettingsScreen(
               horizontalArrangement = Arrangement.SpaceBetween
             ) {
               Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Incoming Calls", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                Text(text = "Vibrate and ring for incoming voice & video calls", fontSize = 12.sp, color = Color(0xCCFFFFFF))
+                Text(text = "Incoming Calls", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                Text(text = "Vibrate and ring for incoming voice & video calls", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
               }
               Switch(
                 checked = user?.notificationCall ?: true,
@@ -472,6 +479,10 @@ fun SettingsScreen(
               )
             }
           }
+        }
+
+        "security" -> {
+           SecuritySettings(viewModel)
         }
 
         "about" -> {
@@ -488,14 +499,14 @@ fun SettingsScreen(
               )
               Spacer(modifier = Modifier.height(18.dp))
               Text(
-                text = "Version 1.0.0 (Production Build)\n" +
+                text = "Version 1.0.1 (Production Build)\n" +
                   "Backend: Google Cloud Firestore & Firebase Auth\n" +
                   "Design System: Apple-inspired Liquid Glass\n" +
                   "Media: Firebase Storage Cloud Infrastructure\n" +
                   "Signaling: WebRTC Peer-to-Peer Calls",
                 fontSize = 13.sp,
                 lineHeight = 20.sp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
               )
             }
@@ -510,12 +521,12 @@ fun SettingsScreen(
                 text = "Pinggo Mobile Messenger",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
               )
               Text(
                 text = "Connected as @${user?.username ?: "user"}",
                 fontSize = 13.sp,
-                color = PinggoEmeraldPrimary,
+                color = PinggoPinkPrimary,
                 modifier = Modifier.padding(top = 4.dp)
               )
             }
@@ -545,12 +556,12 @@ fun GlassDesignOptionRow(
         text = title,
         fontSize = 15.sp,
         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-        color = Color.White
+        color = MaterialTheme.colorScheme.onSurface
       )
       Text(
         text = description,
         fontSize = 12.sp,
-        color = Color(0xAAFFFFFF)
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
       )
     }
     RadioButton(
@@ -578,7 +589,7 @@ fun ThemeOptionRow(
     Icon(
       imageVector = icon,
       contentDescription = null,
-      tint = if (selected) com.example.ui.theme.PinggoPinkPrimary else Color(0xAAFFFFFF),
+      tint = if (selected) com.example.ui.theme.PinggoPinkPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
       modifier = Modifier.size(22.dp)
     )
     Spacer(modifier = Modifier.width(14.dp))
@@ -586,7 +597,7 @@ fun ThemeOptionRow(
       text = title,
       fontSize = 15.sp,
       fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-      color = Color.White,
+      color = MaterialTheme.colorScheme.onSurface,
       modifier = Modifier.weight(1f)
     )
     RadioButton(
@@ -594,5 +605,145 @@ fun ThemeOptionRow(
       onClick = onSelect,
       colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
     )
+  }
+}
+
+@Composable
+fun SecuritySettings(viewModel: PinggoViewModel) {
+  val showChangePasswordDialog = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+  Text(
+    text = "Account Security",
+    fontSize = 14.sp,
+    fontWeight = FontWeight.SemiBold,
+    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+    modifier = Modifier.padding(bottom = 8.dp)
+  )
+
+  GlassCard(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.padding(16.dp)) {
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clickable { showChangePasswordDialog.value = true }
+          .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+      ) {
+        Column {
+          Text(
+            text = "Change Password",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          Text(
+            text = "Update your account password",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+          )
+        }
+        Icon(
+          imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+        )
+      }
+    }
+  }
+
+  if (showChangePasswordDialog.value) {
+    ChangePasswordDialog(
+      onDismiss = { showChangePasswordDialog.value = false },
+      onSubmit = { current, new ->
+        viewModel.updatePassword(new) { success, err ->
+          if (success) {
+            viewModel.showToast("Password updated successfully!")
+            showChangePasswordDialog.value = false
+          } else {
+             viewModel.showToast(err ?: "Failed to update password")
+          }
+        }
+      }
+    )
+  }
+}
+
+@Composable
+fun ChangePasswordDialog(
+  onDismiss: () -> Unit,
+  onSubmit: (String, String) -> Unit
+) {
+  val currentPassword = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+  val newPassword = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+  val confirmPassword = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+  val passwordVisible = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+  androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+      Column(
+        modifier = Modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+        Text(
+          text = "Change Password",
+          fontSize = 18.sp,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface
+        )
+
+        com.example.ui.components.GlassInput(
+          value = currentPassword.value,
+          onValueChange = { currentPassword.value = it },
+          placeholder = "Current Password",
+          leadingIcon = Icons.Filled.Lock,
+          visualTransformation = if (passwordVisible.value) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+          trailingIcon = {
+            IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+              Icon(if (passwordVisible.value) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
+            }
+          }
+        )
+
+        com.example.ui.components.GlassInput(
+          value = newPassword.value,
+          onValueChange = { newPassword.value = it },
+          placeholder = "New Password",
+          leadingIcon = Icons.Filled.Lock,
+          visualTransformation = if (passwordVisible.value) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation()
+        )
+
+        com.example.ui.components.GlassInput(
+          value = confirmPassword.value,
+          onValueChange = { confirmPassword.value = it },
+          placeholder = "Confirm New Password",
+          leadingIcon = Icons.Filled.Lock,
+          visualTransformation = if (passwordVisible.value) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation()
+        )
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End
+        ) {
+          androidx.compose.material3.TextButton(onClick = onDismiss) {
+            Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+          }
+          Spacer(modifier = Modifier.width(8.dp))
+          com.example.ui.components.GlassButton(
+            text = "Update",
+            onClick = {
+              if (newPassword.value != confirmPassword.value) {
+                return@GlassButton
+              }
+              if (newPassword.value.length < 8) {
+                return@GlassButton
+              }
+              onSubmit(currentPassword.value, newPassword.value)
+            }
+          )
+        }
+      }
+    }
   }
 }
