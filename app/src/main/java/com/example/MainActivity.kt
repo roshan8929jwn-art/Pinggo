@@ -39,6 +39,7 @@ import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.ProfileSetupScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SplashScreen
+import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.PinggoTheme
 import com.example.viewmodel.PinggoViewModel
 
@@ -75,6 +76,8 @@ class MainActivity : ComponentActivity() {
       val diagnostic by viewModel.firebaseDiagnostic.collectAsState()
       val isGuestMode by viewModel.isGuestMode.collectAsState()
 
+      val glassDesign by viewModel.glassDesign.collectAsState()
+
       var currentScreen by remember { mutableStateOf(PinggoScreen.SPLASH) }
       var settingsSection by remember { mutableStateOf("general") }
 
@@ -105,7 +108,14 @@ class MainActivity : ComponentActivity() {
         }
       }
 
-      PinggoTheme(themeMode = themeMode) {
+      PinggoTheme(
+        isDarkTheme = when (themeMode) {
+          AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+          AppThemeMode.LIGHT -> false
+          AppThemeMode.DARK -> true
+        },
+        glassDesign = glassDesign
+      ) {
         Surface(
           modifier = Modifier.fillMaxSize(),
           color = Color.Transparent
@@ -142,9 +152,6 @@ class MainActivity : ComponentActivity() {
                   },
                   onOpenDiagnostics = {
                     currentScreen = PinggoScreen.DIAGNOSTIC
-                  },
-                  onExploreDemo = {
-                    currentScreen = PinggoScreen.HOME
                   }
                 )
               }

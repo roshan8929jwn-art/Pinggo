@@ -58,6 +58,17 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private val _themeMode = MutableStateFlow(AppThemeMode.SYSTEM)
   val themeMode: StateFlow<AppThemeMode> = _themeMode.asStateFlow()
 
+  private val _glassDesign = MutableStateFlow(com.example.ui.theme.GlassDesign.CLEAR)
+  val glassDesign: StateFlow<com.example.ui.theme.GlassDesign> = _glassDesign.asStateFlow()
+
+  fun setGlassDesign(design: com.example.ui.theme.GlassDesign) {
+    _glassDesign.value = design
+    viewModelScope.launch {
+      val prefs = getApplication<Application>().getSharedPreferences("pinggo_settings", android.content.Context.MODE_PRIVATE)
+      prefs.edit().putString("glass_design", design.name).apply()
+    }
+  }
+
   // Username validation state
   private val _usernameCheckState = MutableStateFlow<Boolean?>(null) // null = unchecked, true = ok, false = taken
   val usernameCheckState: StateFlow<Boolean?> = _usernameCheckState.asStateFlow()
@@ -136,6 +147,14 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private var statusUpdatesJob: Job? = null
 
   init {
+    val prefs = application.getSharedPreferences("pinggo_settings", android.content.Context.MODE_PRIVATE)
+    val savedDesign = prefs.getString("glass_design", "CLEAR") ?: "CLEAR"
+    _glassDesign.value = try {
+      com.example.ui.theme.GlassDesign.valueOf(savedDesign)
+    } catch (e: Exception) {
+      com.example.ui.theme.GlassDesign.CLEAR
+    }
+
     viewModelScope.launch {
       currentUser.collect { user ->
         if (user != null) {
@@ -144,6 +163,16 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           listenToIncomingCalls(user.uid)
           listenToCallHistory(user.uid)
           listenToStatusUpdates()
+          
+          // Migration for existing users
+          viewModelScope.launch {
+            userProfile.collect { profile ->
+              if (profile != null && profile.usernameLowercase.isEmpty() && profile.username.isNotEmpty()) {
+                val updated = profile.copy(usernameLowercase = profile.username.lowercase())
+                authRepo.updateUserProfile(updated)
+              }
+            }
+          }
         } else if (!_isGuestMode.value) {
           _conversations.value = emptyList()
           _activeConversation.value = null
@@ -325,9 +354,15 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
-  fun createProfile(displayName: String, username: String, bio: String, photoUrl: String, onComplete: () -> Unit) {
+  fun createProfile(displayName: String, username: String, bio: String, photoUrl: String, password: String? = null, onComplete: () -> Unit) {
     viewModelScope.launch {
       _isAuthLoading.value = true
+      
+      // If a password was provided (e.g. for a new Google account setup), link it.
+      if (!password.isNullOrBlank() && currentUser.value?.email != null) {
+         authRepo.linkEmailPassword(currentUser.value!!.email!!, password)
+      }
+
       val res = authRepo.createUserProfile(displayName, username, bio, photoUrl)
       _isAuthLoading.value = false
       res.onSuccess {

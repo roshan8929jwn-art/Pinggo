@@ -5,6 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 enum class AppThemeMode {
@@ -13,62 +15,69 @@ enum class AppThemeMode {
   DARK
 }
 
-private val DarkColorScheme =
-  darkColorScheme(
-    primary = PinggoEmeraldPrimary,
-    onPrimary = Color.White,
-    primaryContainer = PinggoEmeraldDark,
-    onPrimaryContainer = PinggoMintLight,
-    secondary = PinggoTeal,
-    onSecondary = Color.White,
-    tertiary = PinggoMint,
-    background = DarkBgStart,
-    onBackground = DarkTextPrimary,
-    surface = DarkGlassSurface,
-    onSurface = DarkTextPrimary,
-    surfaceVariant = DarkGlassCard,
-    onSurfaceVariant = DarkTextSecondary,
-    outline = DarkGlassBorder,
-    error = DestructiveRed,
-    onError = Color.White
-  )
+enum class GlassDesign {
+  CLEAR,
+  PINK,
+  CRYSTAL
+}
+
+val LocalGlassDesign = staticCompositionLocalOf { GlassDesign.CLEAR }
 
 private val LightColorScheme =
   lightColorScheme(
-    primary = PinggoEmeraldPrimary,
-    onPrimary = Color.White,
-    primaryContainer = PinggoMintLight,
-    onPrimaryContainer = PinggoEmeraldDeep,
-    secondary = PinggoTeal,
-    onSecondary = Color.White,
-    tertiary = PinggoMint,
-    background = LightBgStart,
-    onBackground = LightTextPrimary,
-    surface = LightGlassSurface,
-    onSurface = LightTextPrimary,
-    surfaceVariant = LightGlassCard,
-    onSurfaceVariant = LightTextSecondary,
-    outline = LightGlassBorder,
+    primary = PinggoPinkPrimary,
+    onPrimary = PinggoWhite,
+    primaryContainer = PinggoPinkLight,
+    onPrimaryContainer = PinggoPinkDeep,
+    secondary = PinggoPinkLight,
+    onSecondary = PinggoBlack,
+    tertiary = PinggoPinkLight,
+    background = PinggoOffWhite,
+    onBackground = PinggoBlack,
+    surface = GlassSurface,
+    onSurface = PinggoBlack,
+    surfaceVariant = GlassCard,
+    onSurfaceVariant = PinggoGray,
+    outline = GlassBorder,
     error = DestructiveRed,
-    onError = Color.White
+    onError = PinggoWhite
+  )
+
+// For now, we'll use a slightly darker version of the pink theme for "Dark" if requested, 
+// but the user specified a clean white/pink theme as default.
+private val DarkColorScheme =
+  darkColorScheme(
+    primary = PinggoPinkPrimary,
+    onPrimary = PinggoWhite,
+    primaryContainer = PinggoPinkDeep,
+    onPrimaryContainer = PinggoPinkLight,
+    secondary = PinggoPinkLight,
+    onSecondary = PinggoBlack,
+    tertiary = PinggoPinkLight,
+    background = PinggoBlack,
+    onBackground = PinggoWhite,
+    surface = Color(0xCC1C1C1E),
+    onSurface = PinggoWhite,
+    surfaceVariant = Color(0x992C2C2E),
+    onSurfaceVariant = PinggoLightGray,
+    outline = Color(0x4DFF69B4),
+    error = DestructiveRed,
+    onError = PinggoWhite
   )
 
 @Composable
 fun PinggoTheme(
-  themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+  isDarkTheme: Boolean = isSystemInDarkTheme(),
+  glassDesign: GlassDesign = GlassDesign.CLEAR,
   content: @Composable () -> Unit
 ) {
-  val isDark = when (themeMode) {
-    AppThemeMode.SYSTEM -> isSystemInDarkTheme()
-    AppThemeMode.LIGHT -> false
-    AppThemeMode.DARK -> true
+  val colorScheme = if (isDarkTheme) DarkColorScheme else LightColorScheme
+
+  CompositionLocalProvider(LocalGlassDesign provides glassDesign) {
+    MaterialTheme(
+      colorScheme = colorScheme,
+      typography = Typography,
+      content = content
+    )
   }
-
-  val colorScheme = if (isDark) DarkColorScheme else LightColorScheme
-
-  MaterialTheme(
-    colorScheme = colorScheme,
-    typography = Typography,
-    content = content
-  )
 }

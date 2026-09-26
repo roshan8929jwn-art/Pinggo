@@ -49,8 +49,7 @@ import com.example.ui.components.GlassContainer
 import com.example.ui.components.GlassSearchBar
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
-import com.example.ui.theme.DestructiveRed
-import com.example.ui.theme.PinggoEmeraldPrimary
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 
 @Composable
@@ -100,7 +99,7 @@ fun UserSearchScreen(
 
       if (isSearching) {
         Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-          CircularProgressIndicator(color = PinggoEmeraldPrimary)
+          CircularProgressIndicator(color = PinggoPinkPrimary)
         }
       } else if (searchQuery.isNotEmpty() && searchResults.isEmpty()) {
         Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -143,14 +142,14 @@ fun UserSearchScreen(
                   Text(
                     text = user.handle,
                     fontSize = 13.sp,
-                    color = PinggoEmeraldPrimary,
+                    color = PinggoPinkPrimary,
                     fontWeight = FontWeight.Medium
                   )
                 }
                 Icon(
                   imageVector = Icons.Default.Chat,
                   contentDescription = "Message",
-                  tint = PinggoEmeraldPrimary,
+                  tint = PinggoPinkPrimary,
                   modifier = Modifier.size(20.dp)
                 )
               }
@@ -190,7 +189,7 @@ fun UserSearchScreen(
             Text(
               text = user.handle,
               fontSize = 14.sp,
-              color = PinggoEmeraldPrimary,
+              color = PinggoPinkPrimary,
               fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.height(8.dp))

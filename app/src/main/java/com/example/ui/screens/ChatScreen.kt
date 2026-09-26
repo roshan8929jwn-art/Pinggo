@@ -96,13 +96,7 @@ import com.example.ui.components.GlassCard
 import com.example.ui.components.GlassChatBubble
 import com.example.ui.components.GlassContainer
 import com.example.ui.components.LiquidGlassBackground
-import com.example.ui.theme.DarkGlassBorder
-import com.example.ui.theme.DarkGlassBorderSoft
-import com.example.ui.theme.DestructiveRed
-import com.example.ui.theme.OnlineGreen
-import com.example.ui.theme.PinggoEmeraldPrimary
-import com.example.ui.theme.PinggoMint
-import com.example.ui.theme.PinggoMintUltraLight
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -159,8 +153,8 @@ fun ChatScreen(
           .fillMaxWidth()
           .padding(horizontal = 14.dp, vertical = 6.dp),
         shape = RoundedCornerShape(28.dp),
-        color = Color(0xCC092720),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkGlassBorderSoft),
+        color = Color.White.copy(alpha = 0.9f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f)),
         shadowElevation = 8.dp
       ) {
         Row(
@@ -191,14 +185,14 @@ fun ChatScreen(
               text = chatTitle,
               fontSize = 16.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White,
+              color = Color.Black,
               maxLines = 1,
               overflow = TextOverflow.Ellipsis
             )
             Text(
               text = if (typingUsers.isNotEmpty()) "typing..." else "online",
               fontSize = 12.sp,
-              color = if (typingUsers.isNotEmpty()) PinggoMint else OnlineGreen
+              color = if (typingUsers.isNotEmpty()) PinggoPinkPrimary else OnlinePink
             )
           }
 
@@ -215,7 +209,7 @@ fun ChatScreen(
             Icon(
               imageVector = Icons.Default.Call,
               contentDescription = "Voice Call",
-              tint = PinggoMint,
+              tint = PinggoPinkPrimary,
               modifier = Modifier.size(20.dp)
             )
           }
@@ -233,7 +227,7 @@ fun ChatScreen(
             Icon(
               imageVector = Icons.Default.Videocam,
               contentDescription = "Video Call",
-              tint = PinggoMint,
+              tint = PinggoPinkPrimary,
               modifier = Modifier.size(22.dp)
             )
           }
@@ -313,8 +307,8 @@ fun ChatScreen(
                     Column(
                       modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSent) PinggoEmeraldPrimary else Color(0xCC0E342B))
-                        .border(1.dp, DarkGlassBorderSoft, RoundedCornerShape(20.dp))
+                        .background(if (isSent) PinggoPinkPrimary else Color.White)
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
                         .padding(6.dp)
                     ) {
                       AsyncImage(
@@ -396,8 +390,8 @@ fun ChatScreen(
           .navigationBarsPadding()
           .padding(horizontal = 14.dp, vertical = 8.dp),
         shape = RoundedCornerShape(32.dp),
-        color = Color(0xCC092720),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkGlassBorderSoft),
+        color = Color.White.copy(alpha = 0.95f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f)),
         shadowElevation = 10.dp
       ) {
         Row(
@@ -411,11 +405,11 @@ fun ChatScreen(
             modifier = Modifier
               .size(36.dp)
               .clip(CircleShape)
-              .background(Color(0x3334D399))
+              .background(PinggoPinkLight.copy(alpha = 0.3f))
               .clickable { showMediaPicker = true },
             contentAlignment = Alignment.Center
           ) {
-            Icon(Icons.Default.Add, "Choose Media", tint = PinggoMint, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Add, "Choose Media", tint = PinggoPinkPrimary, modifier = Modifier.size(20.dp))
           }
 
           Spacer(modifier = Modifier.width(6.dp))
@@ -441,10 +435,10 @@ fun ChatScreen(
               },
               maxLines = 4,
               textStyle = TextStyle(
-                color = Color.White,
+                color = Color.Black,
                 fontSize = 15.sp
               ),
-              cursorBrush = SolidColor(PinggoMint),
+              cursorBrush = SolidColor(PinggoPinkPrimary),
               modifier = Modifier
                 .fillMaxWidth()
                 .testTag("message_input")
@@ -485,7 +479,7 @@ fun ChatScreen(
               modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(PinggoEmeraldPrimary)
+                .background(PinggoPinkPrimary)
                 .clickable {
                   viewModel.sendMessage(inputText)
                   inputText = ""
@@ -506,7 +500,7 @@ fun ChatScreen(
               modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(PinggoEmeraldPrimary)
+                .background(PinggoPinkPrimary)
                 .clickable { viewModel.startVoiceRecording() }
                 .testTag("record_mic_button"),
               contentAlignment = Alignment.Center
@@ -541,7 +535,7 @@ fun ChatScreen(
               text = "Choose Media",
               fontSize = 20.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -627,7 +621,7 @@ fun ChatScreen(
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .background(Color(0xDD031914))
+          .background(Color.White.copy(alpha = 0.95f))
           .statusBarsPadding()
           .navigationBarsPadding()
           .padding(24.dp),
@@ -643,14 +637,14 @@ fun ChatScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             IconButton(onClick = { viewModel.cancelVoiceRecording() }) {
-              Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+              Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.Black)
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
               text = "Recording...",
               fontSize = 20.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = Color.Black
             )
           }
 
@@ -665,7 +659,7 @@ fun ChatScreen(
             text = String.format("%02d:%02d", recordingDuration / 60, recordingDuration % 60),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color.Black
           )
 
           Spacer(modifier = Modifier.height(60.dp))
@@ -696,7 +690,7 @@ fun ChatScreen(
                 .clip(CircleShape)
                 .background(
                   Brush.radialGradient(
-                    colors = listOf(PinggoMint, PinggoEmeraldPrimary)
+                    colors = listOf(PinggoPinkLight, PinggoPinkPrimary)
                   )
                 )
                 .border(2.dp, Color.White, CircleShape),
@@ -710,12 +704,12 @@ fun ChatScreen(
               modifier = Modifier
                 .size(54.dp)
                 .clip(CircleShape)
-                .background(Color(0x3310B981))
-                .border(1.dp, OnlineGreen, CircleShape)
+                .background(Color(0x3322C55E))
+                .border(1.dp, Color(0xFF22C55E), CircleShape)
                 .clickable { viewModel.stopAndSendVoiceRecording() },
               contentAlignment = Alignment.Center
             ) {
-              Icon(Icons.Default.Check, "Send", tint = OnlineGreen, modifier = Modifier.size(26.dp))
+              Icon(Icons.Default.Check, "Send", tint = Color(0xFF22C55E), modifier = Modifier.size(26.dp))
             }
           }
 
@@ -737,8 +731,8 @@ fun MediaTile(
     modifier = Modifier
       .width(110.dp)
       .clip(RoundedCornerShape(20.dp))
-      .background(Color(0x990E342B))
-      .border(1.dp, DarkGlassBorderSoft, RoundedCornerShape(20.dp))
+      .background(Color.White.copy(alpha = 0.5f))
+      .border(1.dp, Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
       .clickable { onClick() }
       .padding(vertical = 16.dp)
   ) {
@@ -746,15 +740,15 @@ fun MediaTile(
       modifier = Modifier
         .size(48.dp)
         .clip(CircleShape)
-        .background(Color(0x3334D399)),
+        .background(PinggoPinkLight.copy(alpha = 0.3f)),
       contentAlignment = Alignment.Center
     ) {
-      Icon(imageVector = icon, contentDescription = label, tint = PinggoMint, modifier = Modifier.size(24.dp))
+      Icon(imageVector = icon, contentDescription = label, tint = PinggoPinkPrimary, modifier = Modifier.size(24.dp))
     }
     Spacer(modifier = Modifier.height(8.dp))
     Text(
       text = label,
-      color = Color.White,
+      color = Color.Black,
       fontSize = 13.sp,
       fontWeight = FontWeight.Medium
     )
@@ -787,7 +781,7 @@ fun AudioWaveformVisualizer() {
           .width(4.dp)
           .height(animHeight.value.dp)
           .clip(RoundedCornerShape(2.dp))
-          .background(PinggoMint)
+          .background(PinggoPinkPrimary)
       )
     }
   }
@@ -801,8 +795,8 @@ fun VoiceMessageBubble(
   onPlayClick: () -> Unit
 ) {
   val shape = RoundedCornerShape(20.dp)
-  val bg = if (isSent) PinggoEmeraldPrimary else Color(0xCC0E342B)
-  val contentColor = Color.White
+  val bg = if (isSent) PinggoPinkPrimary else Color.White
+  val contentColor = if (isSent) Color.White else Color.Black
 
   Row(
     modifier = Modifier
@@ -816,14 +810,14 @@ fun VoiceMessageBubble(
       modifier = Modifier
         .size(38.dp)
         .clip(CircleShape)
-        .background(if (isSent) Color.White else PinggoEmeraldPrimary)
+        .background(if (isSent) Color.White else PinggoPinkPrimary)
         .clickable { onPlayClick() },
       contentAlignment = Alignment.Center
     ) {
       Icon(
         imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
         contentDescription = "Play voice",
-        tint = if (isSent) PinggoEmeraldPrimary else Color.White,
+        tint = if (isSent) PinggoPinkPrimary else Color.White,
         modifier = Modifier.size(22.dp)
       )
     }

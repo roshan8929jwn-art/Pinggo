@@ -43,8 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoFullLogo
-import com.example.ui.theme.PinggoEmeraldPrimary
-import com.example.ui.theme.PinggoMint
+import com.example.ui.theme.*
 import com.example.util.FirebaseDiagnosticInfo
 
 @Composable

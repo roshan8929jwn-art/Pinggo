@@ -52,9 +52,7 @@ import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassCard
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
-import com.example.ui.theme.PinggoEmeraldPrimary
-import com.example.ui.theme.PinggoMint
-import com.example.ui.theme.PinggoMintUltraLight
+import com.example.ui.theme.*
 import com.example.util.RingtoneHelper
 import com.example.util.RingtoneItem
 import com.example.viewmodel.PinggoViewModel

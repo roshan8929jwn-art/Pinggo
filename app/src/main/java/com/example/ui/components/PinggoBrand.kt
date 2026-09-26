@@ -33,11 +33,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.theme.DarkGlassBorder
-import com.example.ui.theme.DarkGlassBorderSoft
-import com.example.ui.theme.PinggoEmeraldPrimary
-import com.example.ui.theme.PinggoMint
-import com.example.ui.theme.PinggoMintUltraLight
+import com.example.ui.theme.PinggoPinkPrimary
+import com.example.ui.theme.PinggoPinkLight
 
 /**
  * Compact Penguin Chat-Bubble icon for top headers, tab bars, and inline branding.
@@ -56,13 +53,13 @@ fun PinggoBubbleIcon(
         .background(
           brush = Brush.radialGradient(
             colors = listOf(
-              Color(0x4034D399),
-              Color(0x2010B981),
-              Color(0x0A064E3B)
+              PinggoPinkLight.copy(alpha = 0.3f),
+              PinggoPinkPrimary.copy(alpha = 0.1f),
+              Color.Transparent
             )
           )
         )
-        .border(1.dp, DarkGlassBorderSoft, CircleShape),
+        .border(1.dp, Color.LightGray.copy(alpha = 0.2f), CircleShape),
       contentAlignment = Alignment.Center
     ) {
       Image(
@@ -82,7 +79,7 @@ fun PinggoBubbleIcon(
 
 /**
  * Pinggo Wordmark with official color split:
- * "Pin" in crisp white, "ggo" in bright emerald green.
+ * "Pin" in crisp black, "ggo" in soft pink.
  */
 @Composable
 fun PinggoWordmark(
@@ -94,7 +91,7 @@ fun PinggoWordmark(
     text = buildAnnotatedString {
       withStyle(
         SpanStyle(
-          color = Color.White,
+          color = Color.Black,
           fontWeight = FontWeight.Bold
         )
       ) {
@@ -102,7 +99,7 @@ fun PinggoWordmark(
       }
       withStyle(
         SpanStyle(
-          color = PinggoEmeraldPrimary,
+          color = PinggoPinkPrimary,
           fontWeight = FontWeight.ExtraBold
         )
       ) {
@@ -122,7 +119,7 @@ fun PinggoWordmark(
 fun PinggoTagline(
   modifier: Modifier = Modifier,
   fontSize: TextUnit = 12.sp,
-  color: Color = PinggoMintUltraLight
+  color: Color = Color.Gray
 ) {
   Text(
     text = "Chat • Connect • Together",
@@ -137,7 +134,6 @@ fun PinggoTagline(
 
 /**
  * Official Header Brand combining the compact penguin bubble icon with the Pinggo wordmark.
- * Used for Home, Chat list, Search, Profile, Settings, etc.
  */
 @Composable
 fun PinggoHeaderBrand(
@@ -156,9 +152,7 @@ fun PinggoHeaderBrand(
 }
 
 /**
- * Full Pinggo Brand Presentation with subtle emerald/mint liquid glass aura,
- * official wordmark ("Pin" in white, "ggo" in green), and tagline.
- * Used prominently in Splash Screen, Login Screen, and About Pinggo.
+ * Full Pinggo Brand Presentation with subtle pink liquid glass aura.
  */
 @Composable
 fun PinggoFullLogo(
@@ -173,7 +167,6 @@ fun PinggoFullLogo(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
-    // Subtle emerald/mint liquid glass glow aura behind the penguin logo
     Box(
       modifier = Modifier
         .size(iconSize + 28.dp)
@@ -181,14 +174,13 @@ fun PinggoFullLogo(
         .background(
           brush = Brush.radialGradient(
             colors = listOf(
-              Color(0x6634D399),
-              Color(0x3310B981),
-              Color(0x0F059669),
-              Color(0x00000000)
+              PinggoPinkLight.copy(alpha = 0.4f),
+              PinggoPinkPrimary.copy(alpha = 0.1f),
+              Color.Transparent
             )
           )
         )
-        .border(1.5.dp, DarkGlassBorder, CircleShape),
+        .border(1.dp, Color.LightGray.copy(alpha = 0.2f), CircleShape),
       contentAlignment = Alignment.Center
     ) {
       Image(
@@ -200,7 +192,6 @@ fun PinggoFullLogo(
 
     Spacer(modifier = Modifier.height(18.dp))
 
-    // White "Pin" + Green "ggo" wordmark
     PinggoWordmark(
       fontSize = wordmarkSize,
       letterSpacing = 1.sp
@@ -217,7 +208,7 @@ fun PinggoFullLogo(
         text = subtitle,
         fontSize = 14.sp,
         fontWeight = FontWeight.Medium,
-        color = PinggoMintUltraLight,
+        color = Color.Gray,
         textAlign = TextAlign.Center
       )
     }

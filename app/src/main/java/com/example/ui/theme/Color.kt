@@ -2,54 +2,70 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Pinggo Emerald & Mint Primary Palette (matching reference screenshot)
-val PinggoEmeraldPrimary = Color(0xFF10B981)
-val PinggoEmeraldDark = Color(0xFF065F46)
-val PinggoEmeraldDeep = Color(0xFF064E3B)
-val PinggoMint = Color(0xFF34D399)
-val PinggoMintLight = Color(0xFF6EE7B7)
-val PinggoMintUltraLight = Color(0xFFA7F3D0)
-val PinggoTeal = Color(0xFF14B8A6)
-val PinggoCyan = Color(0xFF06B6D4)
+// Pinggo Pink Primary Palette (New Brand Colors)
+val PinggoPinkPrimary = Color(0xFFFF69B4)
+val PinggoPinkLight = Color(0xFFFFB6D9)
+val PinggoPinkDeep = Color(0xFFC71585)
+val PinggoPinkGlow = Color(0x66FF69B4)
+
+// Neutral Palette
+val PinggoWhite = Color(0xFFFFFFFF)
+val PinggoOffWhite = Color(0xFFF8F8FA)
+val PinggoBlack = Color(0xFF1C1C1E)
+val PinggoGray = Color(0xFF8E8E93)
+val PinggoLightGray = Color(0xFFD1D1D6)
 
 // Liquid Glass Accent & Glow
-val PinggoGlowMint = Color(0x6634D399)
-val PinggoGlowEmerald = Color(0x6610B981)
-val PinggoGlowCyan = Color(0x4406B6D4)
+val PinggoGlowPink = Color(0x66FF69B4)
+val PinggoGlowWhite = Color(0x44FFFFFF)
 
-// Deep Oceanic Teal / Emerald Liquid Glass Backdrop
-val DarkBgStart = Color(0xFF031914)
-val DarkBgMid = Color(0xFF072B23)
-val DarkBgEnd = Color(0xFF0A372E)
-val DarkBgAtmosphere = Color(0xFF0D4338)
+// Pink Liquid Glass Backdrop
+val PinkBgStart = Color(0xFFFFF0F5)
+val PinkBgMid = Color(0xFFFFF5F8)
+val PinkBgEnd = Color(0xFFFFFFFF)
 
-// Dark Glass Panels & Surfaces
-val DarkGlassSurface = Color(0xB80B2B23)
-val DarkGlassBorder = Color(0x4D34D399)
-val DarkGlassBorderSoft = Color(0x2634D399)
-val DarkGlassCard = Color(0x990E342B)
-val DarkGlassBubbleReceived = Color(0xCC11382F)
-val DarkGlassBubbleSent = Color(0xE610B981)
-val DarkGlassInnerHighlight = Color(0x33FFFFFF)
-val DarkTextPrimary = Color(0xFFFFFFFF)
-val DarkTextSecondary = Color(0xFF9EE5D2)
-val DarkTextMuted = Color(0xFF6BA899)
-
-// Light Liquid Glass Palette
-val LightBgStart = Color(0xFFF0FDF4)
-val LightBgMid = Color(0xFFECFDF5)
-val LightBgEnd = Color(0xFFE6FFFA)
-val LightGlassSurface = Color(0xDDFFFFFF)
-val LightGlassBorder = Color(0x6634D399)
-val LightGlassCard = Color(0xC0FFFFFF)
-val LightGlassInnerHighlight = Color(0x80FFFFFF)
-val LightTextPrimary = Color(0xFF062A22)
-val LightTextSecondary = Color(0xFF1B6A56)
-val LightTextMuted = Color(0xFF579685)
+// Glass Panels & Surfaces (Pink/White Theme)
+val GlassSurface = Color(0xCCFFFFFF)
+val GlassBorder = Color(0x4DFF69B4)
+val GlassBorderSoft = Color(0x26FF69B4)
+val GlassCard = Color(0x99FFFFFF)
+val GlassBubbleReceived = Color(0xCCF2F2F7)
+val GlassBubbleSent = Color(0xE6FF69B4)
+val GlassInnerHighlight = Color(0x33FFFFFF)
 
 // Status & Indicators
-val OnlineGreen = Color(0xFF22C55E)
-val OfflineGray = Color(0xFF64748B)
-val UnreadBadgeColor = Color(0xFF10B981)
-val DestructiveRed = Color(0xFFEF4444)
-val WarningAmber = Color(0xFFF59E0B)
+val OnlinePink = Color(0xFFFF69B4)
+val OnlineGreen = Color(0xFF22C55E) // Added back for compatibility or use for online status if preferred
+val OfflineGray = Color(0xFF8E8E93)
+val UnreadBadgeColor = Color(0xFFFF69B4)
+val DestructiveRed = Color(0xFFFF3B30)
+val WarningAmber = Color(0xFFFFCC00)
+
+// Legacy Compatibility Aliases (Mapping old emerald/mint to new pink/light theme)
+val PinggoEmeraldPrimary = PinggoPinkPrimary
+val PinggoMint = PinggoPinkPrimary
+val PinggoMintUltraLight = PinggoPinkLight
+val DarkGlassBorder = GlassBorder
+val DarkGlassBorderSoft = GlassBorderSoft
+val DarkTextPrimary = Color.Black // In light theme, primary text is black
+val DarkTextSecondary = Color.Gray
+val DarkTextMuted = Color.LightGray
+val LightBgStart = PinggoOffWhite
+val LightBgMid = PinggoOffWhite
+val LightBgEnd = PinggoWhite
+val LightGlassSurface = GlassSurface
+val LightGlassBorder = GlassBorder
+val LightGlassCard = GlassCard
+val LightTextPrimary = Color.Black
+val LightTextSecondary = Color.Gray
+val LightTextMuted = Color.LightGray
+val PinggoEmeraldDark = PinggoPinkDeep
+val PinggoTeal = PinggoPinkPrimary
+val PinggoCyan = PinggoPinkLight
+val DarkBgStart = PinggoBlack
+val DarkBgMid = Color(0xFF1C1C1E)
+val DarkBgEnd = Color(0xFF2C2C2E)
+val DarkBgAtmosphere = Color(0xFF3C3C3E)
+val DarkGlassSurface = Color(0xCC1C1C1E)
+val DarkGlassCard = Color(0x992C2C2E)
+val DarkGlassBubbleReceived = Color(0xCC3A3A3C)

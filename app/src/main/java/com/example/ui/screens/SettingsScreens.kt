@@ -127,6 +127,41 @@ fun SettingsScreen(
               )
             }
           }
+
+          Spacer(modifier = Modifier.height(20.dp))
+
+          Text(
+            text = "Glass Design",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xCCFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          val currentGlassDesign by viewModel.glassDesign.collectAsState()
+
+          GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(8.dp)) {
+              GlassDesignOptionRow(
+                title = "Clear Glass",
+                description = "Transparent frosted-glass surfaces",
+                selected = currentGlassDesign == com.example.ui.theme.GlassDesign.CLEAR,
+                onSelect = { viewModel.setGlassDesign(com.example.ui.theme.GlassDesign.CLEAR) }
+              )
+              GlassDesignOptionRow(
+                title = "Pink Glass",
+                description = "Soft pink translucent glass surfaces",
+                selected = currentGlassDesign == com.example.ui.theme.GlassDesign.PINK,
+                onSelect = { viewModel.setGlassDesign(com.example.ui.theme.GlassDesign.PINK) }
+              )
+              GlassDesignOptionRow(
+                title = "Crystal Glass",
+                description = "Clear crystal-inspired translucent surfaces",
+                selected = currentGlassDesign == com.example.ui.theme.GlassDesign.CRYSTAL,
+                onSelect = { viewModel.setGlassDesign(com.example.ui.theme.GlassDesign.CRYSTAL) }
+              )
+            }
+          }
         }
 
         "privacy" -> {
@@ -171,7 +206,7 @@ fun SettingsScreen(
                         viewModel.updatePrivacySettings(key, u.privacyReadReceipts, u.privacyStatus)
                       }
                     },
-                    colors = RadioButtonDefaults.colors(selectedColor = PinggoEmeraldPrimary)
+                    colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
                   )
                 }
               }
@@ -216,7 +251,7 @@ fun SettingsScreen(
                     viewModel.updatePrivacySettings(u.privacyLastSeen, checked, u.privacyStatus)
                   }
                 },
-                colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+                colors = SwitchDefaults.colors(checkedThumbColor = com.example.ui.theme.PinggoPinkPrimary)
               )
             }
           }
@@ -259,7 +294,7 @@ fun SettingsScreen(
                         viewModel.updatePrivacySettings(u.privacyLastSeen, u.privacyReadReceipts, key)
                       }
                     },
-                    colors = RadioButtonDefaults.colors(selectedColor = PinggoEmeraldPrimary)
+                    colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
                   )
                 }
               }
@@ -354,7 +389,7 @@ fun SettingsScreen(
                       viewModel.updateNotificationSettings(checked, u.notificationGroup, u.notificationPreview, u.notificationCall)
                     }
                   },
-                  colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+                  colors = SwitchDefaults.colors(checkedThumbColor = com.example.ui.theme.PinggoPinkPrimary)
                 )
               }
 
@@ -376,7 +411,7 @@ fun SettingsScreen(
                       viewModel.updateNotificationSettings(u.notificationMessage, checked, u.notificationPreview, u.notificationCall)
                     }
                   },
-                  colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+                  colors = SwitchDefaults.colors(checkedThumbColor = com.example.ui.theme.PinggoPinkPrimary)
                 )
               }
 
@@ -398,7 +433,7 @@ fun SettingsScreen(
                       viewModel.updateNotificationSettings(u.notificationMessage, u.notificationGroup, checked, u.notificationCall)
                     }
                   },
-                  colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+                  colors = SwitchDefaults.colors(checkedThumbColor = com.example.ui.theme.PinggoPinkPrimary)
                 )
               }
             }
@@ -433,7 +468,7 @@ fun SettingsScreen(
                     viewModel.updateNotificationSettings(u.notificationMessage, u.notificationGroup, u.notificationPreview, checked)
                   }
                 },
-                colors = SwitchDefaults.colors(checkedThumbColor = PinggoEmeraldPrimary)
+                colors = SwitchDefaults.colors(checkedThumbColor = com.example.ui.theme.PinggoPinkPrimary)
               )
             }
           }
@@ -492,6 +527,41 @@ fun SettingsScreen(
 }
 
 @Composable
+fun GlassDesignOptionRow(
+  title: String,
+  description: String,
+  selected: Boolean,
+  onSelect: () -> Unit
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable { onSelect() }
+      .padding(horizontal = 8.dp, vertical = 10.dp),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        text = title,
+        fontSize = 15.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        color = Color.White
+      )
+      Text(
+        text = description,
+        fontSize = 12.sp,
+        color = Color(0xAAFFFFFF)
+      )
+    }
+    RadioButton(
+      selected = selected,
+      onClick = onSelect,
+      colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
+    )
+  }
+}
+
+@Composable
 fun ThemeOptionRow(
   title: String,
   icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -508,7 +578,7 @@ fun ThemeOptionRow(
     Icon(
       imageVector = icon,
       contentDescription = null,
-      tint = if (selected) PinggoEmeraldPrimary else Color(0xAAFFFFFF),
+      tint = if (selected) com.example.ui.theme.PinggoPinkPrimary else Color(0xAAFFFFFF),
       modifier = Modifier.size(22.dp)
     )
     Spacer(modifier = Modifier.width(14.dp))
@@ -522,7 +592,7 @@ fun ThemeOptionRow(
     RadioButton(
       selected = selected,
       onClick = onSelect,
-      colors = RadioButtonDefaults.colors(selectedColor = PinggoEmeraldPrimary)
+      colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
     )
   }
 }

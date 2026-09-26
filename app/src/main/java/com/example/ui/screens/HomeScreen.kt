@@ -94,15 +94,8 @@ import com.example.ui.components.GlassCard
 import com.example.ui.components.GlassIconButton
 import com.example.ui.components.GlassSearchBar
 import com.example.ui.components.LiquidGlassBackground
-import com.example.ui.theme.DarkGlassBorder
-import com.example.ui.theme.DarkGlassBorderSoft
-import com.example.ui.theme.DarkTextPrimary
-import com.example.ui.theme.DarkTextSecondary
-import com.example.ui.theme.OnlineGreen
-import com.example.ui.theme.PinggoEmeraldPrimary
-import com.example.ui.theme.PinggoMint
-import com.example.ui.theme.PinggoMintUltraLight
-import com.example.ui.theme.UnreadBadgeColor
+import androidx.compose.ui.text.style.TextAlign
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -198,14 +191,14 @@ fun HomeNavItem(
     Box(
       modifier = Modifier
         .clip(RoundedCornerShape(16.dp))
-        .background(if (isSelected) Color(0x3510B981) else Color.Transparent)
+        .background(if (isSelected) PinggoPinkLight.copy(alpha = 0.3f) else Color.Transparent)
         .padding(horizontal = 16.dp, vertical = 6.dp),
       contentAlignment = Alignment.Center
     ) {
       Icon(
         imageVector = icon,
         contentDescription = label,
-        tint = if (isSelected) PinggoMint else Color(0xAA94A3B8),
+        tint = if (isSelected) PinggoPinkPrimary else Color.Gray,
         modifier = Modifier.size(22.dp)
       )
     }
@@ -214,7 +207,7 @@ fun HomeNavItem(
       text = label,
       fontSize = 11.sp,
       fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-      color = if (isSelected) PinggoMint else Color(0xAA94A3B8)
+      color = if (isSelected) PinggoPinkPrimary else Color.Gray
     )
   }
 }
@@ -351,10 +344,10 @@ fun ChatsTab(
             .clip(RoundedCornerShape(20.dp))
             .clickable { viewModel.setFilter(filter) },
           shape = RoundedCornerShape(20.dp),
-          color = if (isActive) PinggoEmeraldPrimary else Color(0x660E342B),
+          color = if (isActive) PinggoPinkPrimary else Color.White.copy(alpha = 0.1f),
           border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isActive) Color(0x80FFFFFF) else DarkGlassBorderSoft
+            if (isActive) Color.White.copy(alpha = 0.5f) else Color.LightGray.copy(alpha = 0.2f)
           )
         ) {
           Text(
@@ -504,8 +497,8 @@ fun ChatsTab(
         .clickable { onOpenSearch() }
         .testTag("add_username_button"),
       shape = RoundedCornerShape(26.dp),
-      color = Color(0xEE0B3B2E),
-      border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0x9910B981)),
+      color = Color.White,
+      border = androidx.compose.foundation.BorderStroke(1.2.dp, PinggoPinkPrimary),
       shadowElevation = 10.dp
     ) {
       Row(
@@ -515,7 +508,7 @@ fun ChatsTab(
         Icon(
           imageVector = Icons.Default.PersonAdd,
           contentDescription = "Add Username",
-          tint = PinggoMint,
+          tint = PinggoPinkPrimary,
           modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -571,10 +564,10 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
           modifier = Modifier
             .size(46.dp)
             .clip(CircleShape)
-            .background(Color(0x3510B981)),
+            .background(PinggoPinkLight.copy(alpha = 0.3f)),
           contentAlignment = Alignment.Center
         ) {
-          Icon(Icons.Default.Phone, null, tint = PinggoMint, modifier = Modifier.size(22.dp))
+          Icon(Icons.Default.Phone, null, tint = PinggoPinkPrimary, modifier = Modifier.size(22.dp))
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -617,7 +610,7 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
           Icon(
             imageVector = Icons.Default.Call,
             contentDescription = null,
-            tint = PinggoMint,
+            tint = PinggoPinkPrimary,
             modifier = Modifier.size(44.dp)
           )
           Spacer(modifier = Modifier.height(12.dp))
@@ -686,7 +679,7 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
                 Icon(
                   imageVector = if (isVideo) Icons.Default.Videocam else Icons.Default.Call,
                   contentDescription = "Call",
-                  tint = PinggoMint
+                  tint = PinggoPinkPrimary
                 )
               }
             }
@@ -737,6 +730,21 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
       )
     }
 
+    var selectedMediaUri by remember { mutableStateOf<Uri?>(null) }
+    var isVideo by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
+
+    val mediaPickerLauncher = rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+      if (uri != null) {
+        selectedMediaUri = uri
+        val mimeType = viewModel.getApplication<android.app.Application>().contentResolver.getType(uri)
+        isVideo = mimeType?.startsWith("video") == true
+        showPostBox = true
+      }
+    }
+
     // My Status Card
     GlassCard(
       modifier = Modifier.fillMaxWidth(),
@@ -760,19 +768,25 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
             text = "My Status",
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            color = Color.Black
           )
           Text(
             text = if (myUpdates.isNotEmpty()) "Tap to update or view status" else "Tap to add status update",
             fontSize = 13.sp,
-            color = PinggoMintUltraLight
+            color = Color.Gray
           )
         }
-        Icon(
-          imageVector = Icons.Default.CameraAlt,
-          contentDescription = "Post Status",
-          tint = PinggoMint
-        )
+        Row {
+          IconButton(onClick = {
+            mediaPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+          }) {
+            Icon(
+              imageVector = Icons.Default.CameraAlt,
+              contentDescription = "Post Status",
+              tint = PinggoPinkPrimary
+            )
+          }
+        }
       }
     }
 
@@ -782,6 +796,36 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
           .fillMaxWidth()
           .padding(top = 10.dp)
       ) {
+        if (selectedMediaUri != null) {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(200.dp)
+              .clip(RoundedCornerShape(16.dp))
+              .background(Color.Black.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+          ) {
+            if (isVideo) {
+              Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(48.dp))
+              Text("Video Selected", color = Color.White, modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp))
+            } else {
+              AsyncImage(
+                model = selectedMediaUri,
+                contentDescription = "Preview",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+              )
+            }
+            IconButton(
+              onClick = { selectedMediaUri = null },
+              modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+              Icon(Icons.Default.Close, null, tint = Color.White)
+            }
+          }
+          Spacer(modifier = Modifier.height(10.dp))
+        }
+
         com.example.ui.components.GlassInput(
           value = newStatusText,
           onValueChange = { newStatusText = it },
@@ -790,9 +834,20 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         com.example.ui.components.GlassButton(
-          text = "Share Status",
+          text = if (isUploading) "Uploading..." else "Share Status",
+          isLoading = isUploading,
           onClick = {
-            if (newStatusText.isNotEmpty()) {
+            if (selectedMediaUri != null) {
+              viewModel.uploadStatusMedia(selectedMediaUri!!, isVideo, newStatusText, { uploading ->
+                isUploading = uploading
+              }, { success ->
+                if (success) {
+                  newStatusText = ""
+                  selectedMediaUri = null
+                  showPostBox = false
+                }
+              })
+            } else if (newStatusText.isNotEmpty()) {
               viewModel.postStatus(newStatusText)
               newStatusText = ""
               showPostBox = false
@@ -855,8 +910,8 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                   }
                   .testTag("view_status_viewers_button"),
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0x3310B981),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6610B981))
+                color = PinggoPinkLight.copy(alpha = 0.2f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, PinggoPinkPrimary.copy(alpha = 0.4f))
               ) {
                 Row(
                   modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -865,7 +920,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                   Icon(
                     imageVector = Icons.Default.Visibility,
                     contentDescription = "Viewers",
-                    tint = PinggoMint,
+                    tint = PinggoPinkPrimary,
                     modifier = Modifier.size(16.dp)
                   )
                   Spacer(modifier = Modifier.width(6.dp))
@@ -1088,7 +1143,7 @@ fun StatusViewersDialog(
             Icon(
               imageVector = Icons.Default.Visibility,
               contentDescription = null,
-              tint = PinggoMint,
+              tint = PinggoPinkPrimary,
               modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -1113,7 +1168,7 @@ fun StatusViewersDialog(
               .height(120.dp),
             contentAlignment = Alignment.Center
           ) {
-            CircularProgressIndicator(color = PinggoMint, modifier = Modifier.size(32.dp))
+            CircularProgressIndicator(color = PinggoPinkPrimary, modifier = Modifier.size(32.dp))
           }
         } else if (viewers.isEmpty()) {
           Box(
@@ -1140,7 +1195,7 @@ fun StatusViewersDialog(
                 modifier = Modifier
                   .fillMaxWidth()
                   .clip(RoundedCornerShape(14.dp))
-                  .background(Color(0x2210B981))
+                  .background(PinggoPinkLight.copy(alpha = 0.2f))
                   .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -1194,6 +1249,8 @@ fun ProfileTab(
   val user by viewModel.userProfile.collectAsState()
   var showEditProfileDialog by remember { mutableStateOf(false) }
 
+  var showSignOutDialog by remember { mutableStateOf(false) }
+
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -1201,6 +1258,7 @@ fun ProfileTab(
       .padding(horizontal = 20.dp)
       .testTag("profile_tab_screen")
   ) {
+    // ... (rest of the profile header)
     Row(
       modifier = Modifier
         .fillMaxWidth()
@@ -1240,14 +1298,14 @@ fun ProfileTab(
         Text(
           text = "@${user?.username ?: "username"}",
           fontSize = 14.sp,
-          color = PinggoMint,
+          color = PinggoPinkPrimary,
           fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
           text = user?.bio?.ifEmpty { "Living the best version of myself ✨" } ?: "Living the best version of myself ✨",
           fontSize = 13.sp,
-          color = PinggoMintUltraLight
+          color = Color.Gray
         )
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -1296,7 +1354,7 @@ fun ProfileTab(
             Icon(
               imageVector = icon,
               contentDescription = title,
-              tint = PinggoMint,
+              tint = PinggoPinkPrimary,
               modifier = Modifier.size(22.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -1304,13 +1362,13 @@ fun ProfileTab(
               text = title,
               fontSize = 15.sp,
               fontWeight = FontWeight.Medium,
-              color = Color.White,
+              color = Color.Black,
               modifier = Modifier.weight(1f)
             )
             Icon(
               imageVector = Icons.Default.ChevronRight,
               contentDescription = null,
-              tint = Color(0x88FFFFFF),
+              tint = Color.Gray,
               modifier = Modifier.size(18.dp)
             )
           }
@@ -1322,7 +1380,7 @@ fun ProfileTab(
         com.example.ui.components.GlassButton(
           text = "Sign Out",
           isPrimary = false,
-          onClick = { viewModel.signOut() },
+          onClick = { showSignOutDialog = true },
           modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -1337,7 +1395,69 @@ fun ProfileTab(
       onDismiss = { showEditProfileDialog = false }
     )
   }
+
+  if (showSignOutDialog) {
+    SignOutConfirmationDialog(
+      onConfirm = {
+        showSignOutDialog = false
+        viewModel.signOut()
+      },
+      onDismiss = { showSignOutDialog = false }
+    )
+  }
 }
+
+@Composable
+fun SignOutConfirmationDialog(
+  onConfirm: () -> Unit,
+  onDismiss: () -> Unit
+) {
+  Dialog(onDismissRequest = onDismiss) {
+    com.example.ui.components.GlassContainer(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(16.dp),
+      shape = RoundedCornerShape(28.dp),
+      elevation = 16.dp
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+      ) {
+        Text(
+          text = "Are you sure you want to log out your account?",
+          fontSize = 16.sp,
+          fontWeight = FontWeight.Medium,
+          color = Color.Black,
+          textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          com.example.ui.components.GlassButton(
+            text = "NO",
+            isPrimary = false,
+            onClick = onDismiss,
+            modifier = Modifier.weight(1f)
+          )
+          com.example.ui.components.GlassButton(
+            text = "YES",
+            isPrimary = true,
+            onClick = onConfirm,
+            modifier = Modifier.weight(1f)
+          )
+        }
+      }
+    }
+  }
+}
+
 
 @Composable
 fun EditProfileDialog(
@@ -1425,7 +1545,7 @@ fun EditProfileDialog(
             modifier = Modifier
               .size(32.dp)
               .clip(CircleShape)
-              .background(PinggoEmeraldPrimary)
+              .background(PinggoPinkPrimary)
               .clickable {
                 photoPickerLauncher.launch(
                   PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)

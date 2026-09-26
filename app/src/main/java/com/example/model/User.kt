@@ -4,6 +4,7 @@ data class User(
   val uid: String = "",
   val displayName: String = "",
   val username: String = "",
+  val usernameLowercase: String = "",
   val email: String = "",
   val photoURL: String = "",
   val bio: String = "Hey there! I am using Pinggo 🐧",
@@ -30,7 +31,8 @@ data class User(
     return mapOf(
       "uid" to uid,
       "displayName" to displayName,
-      "username" to username.lowercase(),
+      "username" to username,
+      "usernameLowercase" to usernameLowercase.lowercase(),
       "email" to email,
       "photoURL" to photoURL,
       "bio" to bio,
@@ -61,7 +63,8 @@ data class User(
       return User(
         uid = map["uid"] as? String ?: "",
         displayName = map["displayName"] as? String ?: "",
-        username = (map["username"] as? String ?: "").lowercase(),
+        username = map["username"] as? String ?: "",
+        usernameLowercase = (map["usernameLowercase"] as? String ?: "").lowercase(),
         email = map["email"] as? String ?: "",
         photoURL = map["photoURL"] as? String ?: "",
         bio = map["bio"] as? String ?: "Hey there! I am using Pinggo 🐧",
@@ -87,3 +90,6 @@ data class User(
     }
   }
 }
+
+val User.handle: String
+  get() = if (username.startsWith("@")) username else "@$username"

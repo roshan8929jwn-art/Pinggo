@@ -52,7 +52,7 @@ import com.example.ui.components.GlassInput
 import com.example.ui.components.GlassSearchBar
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
-import com.example.ui.theme.PinggoEmeraldPrimary
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 
 @Composable

@@ -3,22 +3,11 @@ package com.example.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,21 +16,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,9 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,11 +37,8 @@ import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassInput
 import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoBubbleIcon
-import com.example.ui.theme.DarkGlassBorder
-import com.example.ui.theme.OnlineGreen
-import com.example.ui.theme.PinggoEmeraldPrimary
-import com.example.ui.theme.PinggoMint
-import com.example.ui.theme.PinggoMintUltraLight
+import com.example.ui.theme.PinggoPinkPrimary
+import com.example.ui.theme.PinggoPinkLight
 import com.example.viewmodel.PinggoViewModel
 
 @Composable
@@ -78,10 +50,16 @@ fun ProfileSetupScreen(
   val isLoading by viewModel.isAuthLoading.collectAsState()
   val usernameCheckState by viewModel.usernameCheckState.collectAsState()
 
+  var currentStep by remember { mutableStateOf(1) } // 1: Info, 2: Password, 3: Verification
+
   var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
   var username by remember { mutableStateOf("") }
   var bio by remember { mutableStateOf("Hey! I'm using Pinggo 🐧") }
   var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+  var password by remember { mutableStateOf("") }
+  var confirmPassword by remember { mutableStateOf("") }
+  var passwordVisible by remember { mutableStateOf(false) }
 
   val photoPickerLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
@@ -93,8 +71,8 @@ fun ProfileSetupScreen(
 
   LaunchedEffect(username) {
     val bare = username.trim().removePrefix("@")
-    if (bare.length >= 3 && username.matches(Regex("^@?[a-zA-Z0-9_]+$"))) {
-      viewModel.checkUsername(username)
+    if (bare.length >= 3) {
+      viewModel.checkUsername(bare)
     }
   }
 
@@ -108,189 +86,274 @@ fun ProfileSetupScreen(
         .verticalScroll(rememberScrollState()),
       horizontalAlignment = Alignment.CenterHorizontally
     ) {
-      // Header matching Screen 3
+      // Header
       Row(
         modifier = Modifier
           .fillMaxWidth()
           .padding(top = 10.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        IconButton(onClick = { /* back handled by navigation */ }, modifier = Modifier.size(40.dp)) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+        IconButton(onClick = { 
+          if (currentStep > 1) currentStep--
+        }, modifier = Modifier.size(40.dp)) {
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.Black)
         }
         Spacer(modifier = Modifier.width(6.dp))
         PinggoBubbleIcon(size = 32.dp)
         Spacer(modifier = Modifier.width(10.dp))
         Column {
           Text(
-            text = "Create Your Profile",
+            text = when(currentStep) {
+              1 -> "Create Your Profile"
+              2 -> "Security Setup"
+              else -> "Email Verification"
+            },
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color.Black
           )
           Text(
-            text = "Make it yours",
+            text = when(currentStep) {
+              1 -> "Tell us about yourself"
+              2 -> "Set your password"
+              else -> "Verify your Gmail address"
+            },
             fontSize = 13.sp,
-            color = PinggoMintUltraLight
+            color = Color.Gray
           )
         }
       }
 
       Spacer(modifier = Modifier.height(16.dp))
 
-      // Glowing circular camera container matching screenshot
-      Box(
-        modifier = Modifier
-          .size(110.dp)
-          .clip(CircleShape)
-          .background(
-            brush = Brush.radialGradient(
-              colors = listOf(Color(0x5534D399), Color(0x2210B981), Color(0x00000000))
+      when (currentStep) {
+        1 -> {
+          // Profile Info Step
+          Box(
+            modifier = Modifier
+              .size(110.dp)
+              .clip(CircleShape)
+              .background(
+                brush = Brush.radialGradient(
+                  colors = listOf(PinggoPinkLight.copy(alpha = 0.3f), Color.Transparent)
+                )
+              )
+              .border(2.dp, Color.LightGray, CircleShape)
+              .clickable { photoPickerLauncher.launch("image/*") },
+            contentAlignment = Alignment.Center
+          ) {
+            if (selectedImageUri != null) {
+              AsyncImage(
+                model = selectedImageUri,
+                contentDescription = "Profile photo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+              )
+            } else if (!currentUser?.photoUrl.toString().isNullOrEmpty()) {
+              AsyncImage(
+                model = currentUser?.photoUrl.toString(),
+                contentDescription = "Google photo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+              )
+            } else {
+              Icon(
+                imageVector = Icons.Default.CameraAlt,
+                contentDescription = "Add photo",
+                tint = Color.Gray,
+                modifier = Modifier.size(36.dp)
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(30.dp))
+
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Display Name", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            GlassInput(
+              value = displayName,
+              onValueChange = { displayName = it },
+              placeholder = "e.g. Roshan Verma",
+              testTag = "display_name_input"
             )
+          }
+
+          Spacer(modifier = Modifier.height(18.dp))
+
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Username", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            GlassInput(
+              value = username,
+              onValueChange = { input ->
+                val allowed = input.filter { it.isLetterOrDigit() || it == '_' }
+                username = allowed.take(21).lowercase()
+              },
+              placeholder = "username",
+              leadingIcon = Icons.Default.Person,
+              trailingIcon = {
+                if (username.length >= 3) {
+                  when (usernameCheckState) {
+                    true -> Icon(Icons.Default.Check, "Available", tint = Color(0xFF22C55E), modifier = Modifier.size(20.dp))
+                    false -> Icon(Icons.Default.Close, "Taken", tint = Color.Red, modifier = Modifier.size(20.dp))
+                    null -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PinggoPinkPrimary)
+                  }
+                }
+              },
+              testTag = "username_input"
+            )
+            Text(
+              text = "Lowercase, numbers, and underscores only.",
+              fontSize = 11.sp,
+              color = Color.Gray,
+              modifier = Modifier.padding(top = 4.dp)
+            )
+          }
+
+          Spacer(modifier = Modifier.height(18.dp))
+
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Bio (optional)", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            GlassInput(
+              value = bio,
+              onValueChange = { bio = it },
+              placeholder = "Hey! I'm using Pinggo",
+              testTag = "bio_input"
+            )
+          }
+
+          Spacer(modifier = Modifier.height(36.dp))
+
+          GlassButton(
+            text = "Next",
+            onClick = {
+              if (displayName.isBlank()) {
+                viewModel.showToast("Please enter your name")
+                return@GlassButton
+              }
+              if (username.length < 3) {
+                viewModel.showToast("Username must be at least 3 characters")
+                return@GlassButton
+              }
+              if (usernameCheckState == false) {
+                viewModel.showToast("Username is already taken")
+                return@GlassButton
+              }
+              currentStep = 2
+            },
+            modifier = Modifier.fillMaxWidth()
           )
-          .border(2.dp, DarkGlassBorder, CircleShape)
-          .clickable { photoPickerLauncher.launch("image/*") },
-        contentAlignment = Alignment.Center
-      ) {
-        if (selectedImageUri != null) {
-          AsyncImage(
-            model = selectedImageUri,
-            contentDescription = "Profile photo",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+        }
+
+        2 -> {
+          // Password Setup Step
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Set Password", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            GlassInput(
+              value = password,
+              onValueChange = { password = it },
+              placeholder = "Minimum 8 characters",
+              leadingIcon = Icons.Default.Lock,
+              visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+              trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                  Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null)
+                }
+              },
+              testTag = "setup_password_input"
+            )
+          }
+
+          Spacer(modifier = Modifier.height(18.dp))
+
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Confirm Password", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            GlassInput(
+              value = confirmPassword,
+              onValueChange = { confirmPassword = it },
+              placeholder = "Confirm your password",
+              leadingIcon = Icons.Default.Lock,
+              visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+              testTag = "setup_confirm_password_input"
+            )
+          }
+
+          Spacer(modifier = Modifier.height(36.dp))
+
+          GlassButton(
+            text = "Continue",
+            onClick = {
+              if (password.length < 8) {
+                viewModel.showToast("Password must be at least 8 characters")
+                return@GlassButton
+              }
+              if (password != confirmPassword) {
+                viewModel.showToast("Passwords do not match")
+                return@GlassButton
+              }
+              
+              // Proceed to verification or creation
+              if (currentUser?.isEmailVerified == true) {
+                 createProfile(viewModel, displayName, username, bio, selectedImageUri, password, onProfileCreated)
+              } else {
+                currentStep = 3
+              }
+            },
+            modifier = Modifier.fillMaxWidth()
           )
-        } else if (!currentUser?.photoUrl.toString().isNullOrEmpty()) {
-          AsyncImage(
-            model = currentUser?.photoUrl.toString(),
-            contentDescription = "Google photo",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-          )
-        } else {
-          Icon(
-            imageVector = Icons.Default.CameraAlt,
-            contentDescription = "Add photo",
-            tint = Color.White,
-            modifier = Modifier.size(36.dp)
-          )
+        }
+
+        3 -> {
+          // Email Verification Step
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.Email, null, tint = PinggoPinkPrimary, modifier = Modifier.size(64.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+              text = "Verification email sent to ${currentUser?.email}. Please check your Gmail inbox and tap the link to continue.",
+              textAlign = TextAlign.Center,
+              color = Color.Black
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            GlassButton(
+              text = "Refresh Status",
+              onClick = {
+                viewModel.currentUser.value?.reload()?.addOnCompleteListener {
+                  if (viewModel.currentUser.value?.isEmailVerified == true) {
+                    createProfile(viewModel, displayName, username, bio, selectedImageUri, password, onProfileCreated)
+                  } else {
+                    viewModel.showToast("Email not yet verified. Please check your inbox.")
+                  }
+                }
+              },
+              modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            TextButton(onClick = { viewModel.resendVerificationEmail() }) {
+              Text("Resend Verification Email", color = PinggoPinkPrimary)
+            }
+          }
         }
       }
 
       Spacer(modifier = Modifier.height(30.dp))
-
-      // Display Name section
-      Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-          text = "Display Name",
-          fontSize = 13.sp,
-          color = Color(0xCCFFFFFF),
-          fontWeight = FontWeight.Medium,
-          modifier = Modifier.padding(bottom = 6.dp)
-        )
-        GlassInput(
-          value = displayName,
-          onValueChange = { displayName = it },
-          placeholder = "e.g. Roshan Verma",
-          testTag = "display_name_input"
-        )
-      }
-
-      Spacer(modifier = Modifier.height(18.dp))
-
-      // Username section with validation status
-      Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-          text = "Username",
-          fontSize = 13.sp,
-          color = Color(0xCCFFFFFF),
-          fontWeight = FontWeight.Medium,
-          modifier = Modifier.padding(bottom = 6.dp)
-        )
-        GlassInput(
-          value = username,
-          onValueChange = { input ->
-            val allowed = input.filter { it.isLetterOrDigit() || it == '_' || it == '@' }
-            username = allowed.take(21).lowercase()
-          },
-          placeholder = "@username",
-          keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Email,
-            capitalization = KeyboardCapitalization.None,
-            autoCorrectEnabled = false,
-            imeAction = ImeAction.Next
-          ),
-          keyboardActions = KeyboardActions(
-            onNext = { focusManager.moveFocus(FocusDirection.Down) }
-          ),
-          trailingIcon = {
-            val bareLength = username.trim().removePrefix("@").length
-            if (bareLength >= 3 && username.matches(Regex("^@?[a-zA-Z0-9_]+$"))) {
-              when (usernameCheckState) {
-                true -> Icon(Icons.Default.Check, "Available", tint = OnlineGreen, modifier = Modifier.size(20.dp))
-                false -> Icon(Icons.Default.Close, "Taken", tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
-                null -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PinggoMint)
-              }
-            }
-          },
-          testTag = "username_input"
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-          text = "Username must be 3-20 characters (@, letters, numbers, underscore)",
-          fontSize = 11.sp,
-          color = PinggoMintUltraLight.copy(alpha = 0.8f)
-        )
-      }
-
-      Spacer(modifier = Modifier.height(18.dp))
-
-      // Bio section
-      Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-          text = "Bio (optional)",
-          fontSize = 13.sp,
-          color = Color(0xCCFFFFFF),
-          fontWeight = FontWeight.Medium,
-          modifier = Modifier.padding(bottom = 6.dp)
-        )
-        GlassInput(
-          value = bio,
-          onValueChange = { bio = it },
-          placeholder = "Hey! I'm using Pinggo",
-          testTag = "bio_input"
-        )
-      }
-
-      Spacer(modifier = Modifier.height(36.dp))
-
-      // "Continue" pill button
-      GlassButton(
-        text = "Continue",
-        onClick = {
-          if (displayName.trim().isEmpty()) {
-            viewModel.showToast("Please enter your name")
-            return@GlassButton
-          }
-          val cleanUsername = username.trim().lowercase()
-          val bare = cleanUsername.removePrefix("@")
-          if (bare.length < 3) {
-            viewModel.showToast("Username must be at least 3 characters")
-            return@GlassButton
-          }
-          if (!cleanUsername.matches(Regex("^@?[a-z0-9_]+$"))) {
-            viewModel.showToast("Username can only contain @, letters, numbers, and underscore")
-            return@GlassButton
-          }
-          val photo = selectedImageUri?.toString() ?: (currentUser?.photoUrl?.toString() ?: "")
-          viewModel.createProfile(displayName, cleanUsername, bio, photo) {
-            onProfileCreated()
-          }
-        },
-        isLoading = isLoading,
-        modifier = Modifier.fillMaxWidth()
-      )
-
-      Spacer(modifier = Modifier.height(30.dp))
     }
+  }
+}
+
+private fun createProfile(
+  viewModel: PinggoViewModel,
+  displayName: String,
+  username: String,
+  bio: String,
+  photoUri: Uri?,
+  password: String,
+  onComplete: () -> Unit
+) {
+  val photo = photoUri?.toString() ?: (viewModel.currentUser.value?.photoUrl?.toString() ?: "")
+  viewModel.createProfile(displayName, username, bio, photo, password) {
+    onComplete()
   }
 }

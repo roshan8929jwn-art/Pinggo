@@ -48,9 +48,7 @@ import androidx.compose.ui.unit.sp
 import com.example.model.CallSession
 import com.example.ui.components.GlassAvatar
 import com.example.ui.components.LiquidGlassBackground
-import com.example.ui.theme.DestructiveRed
-import com.example.ui.theme.OnlineGreen
-import com.example.ui.theme.PinggoEmeraldPrimary
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 
 @Composable

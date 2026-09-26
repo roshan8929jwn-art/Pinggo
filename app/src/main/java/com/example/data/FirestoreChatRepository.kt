@@ -520,28 +520,44 @@ class FirestoreChatRepository {
     return try {
       val results = mutableListOf<User>()
 
-      // 1. Search by username prefix
-      val usernameQuery = db.collection("users")
-        .whereGreaterThanOrEqualTo("username", clean)
-        .whereLessThanOrEqualTo("username", clean + "\uf8ff")
-        .limit(20)
+      // 1. Search by exact usernameLowercase
+      val exactMatch = db.collection("users")
+        .whereEqualTo("usernameLowercase", clean)
+        .limit(5)
         .get()
         .await()
 
-      for (doc in usernameQuery.documents) {
+      for (doc in exactMatch.documents) {
         val user = User.fromMap(doc.data ?: continue)
         if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
           results.add(user)
         }
       }
 
-      // 2. Search by displayName (case-insensitive local check on prefix match)
+      // 2. Search by usernameLowercase prefix if no exact match or to fill results
       if (results.size < 10) {
-        val allUsers = db.collection("users").limit(30).get().await()
+        val prefixQuery = db.collection("users")
+          .whereGreaterThanOrEqualTo("usernameLowercase", clean)
+          .whereLessThanOrEqualTo("usernameLowercase", clean + "\uf8ff")
+          .limit(10)
+          .get()
+          .await()
+
+        for (doc in prefixQuery.documents) {
+          val user = User.fromMap(doc.data ?: continue)
+          if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
+            results.add(user)
+          }
+        }
+      }
+
+      // 3. Search by displayName (case-insensitive local check)
+      if (results.size < 15) {
+        val allUsers = db.collection("users").limit(40).get().await()
         for (doc in allUsers.documents) {
           val user = User.fromMap(doc.data ?: continue)
           if (user.uid != currentUserId && results.none { it.uid == user.uid }) {
-            if (user.displayName.lowercase().contains(clean) || user.email.lowercase().contains(clean)) {
+            if (user.displayName.lowercase().contains(clean)) {
               results.add(user)
             }
           }
@@ -692,6 +708,7 @@ class FirestoreChatRepository {
             "uid" to viewer.uid,
             "displayName" to viewer.displayName,
             "username" to viewer.username,
+            "usernameLowercase" to viewer.usernameLowercase,
             "photoURL" to viewer.photoURL,
             "viewedAt" to now
           )

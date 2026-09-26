@@ -181,6 +181,7 @@ class FirebaseAuthRepository(private val context: Context) {
       uid = currentFirebaseUser.uid,
       displayName = displayName.ifEmpty { currentFirebaseUser.displayName ?: "Pinggo User" },
       username = cleanUsername,
+      usernameLowercase = cleanUsername,
       email = currentFirebaseUser.email ?: "",
       photoURL = photoUrl.ifEmpty { currentFirebaseUser.photoUrl?.toString() ?: "" },
       bio = bio.ifEmpty { "Hey there! I am using Pinggo 🐧" },
@@ -231,6 +232,7 @@ class FirebaseAuthRepository(private val context: Context) {
     val updatedUser = (currentProfile ?: User(uid = currentFirebaseUser.uid)).copy(
       displayName = displayName.ifEmpty { currentProfile?.displayName ?: "Pinggo User" },
       username = cleanNewUsername,
+      usernameLowercase = cleanNewUsername,
       bio = bio,
       photoURL = photoUrl.ifEmpty { currentProfile?.photoURL ?: "" }
     )
@@ -393,6 +395,7 @@ class FirebaseAuthRepository(private val context: Context) {
         uid = firebaseUser.uid,
         displayName = displayName.ifEmpty { cleanUsername },
         username = cleanUsername,
+        usernameLowercase = cleanUsername,
         email = email.trim(),
         photoURL = "",
         bio = "Hey there! I am using Pinggo 🐧",
@@ -662,6 +665,31 @@ class FirebaseAuthRepository(private val context: Context) {
       auth?.signOut()
       _currentUser.value = null
       _userProfile.value = null
+    }
+  }
+
+  suspend fun linkEmailPassword(email: String, password: String): Result<Unit> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth not ready"))
+    val user = a.currentUser ?: return Result.failure(IllegalStateException("No authenticated user"))
+    return try {
+      val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, password)
+      user.linkWithCredential(credential).await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "linkEmailPassword failed", e)
+      Result.failure(e)
+    }
+  }
+
+  suspend fun updatePassword(password: String): Result<Unit> {
+    val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth not ready"))
+    val user = a.currentUser ?: return Result.failure(IllegalStateException("No authenticated user"))
+    return try {
+      user.updatePassword(password).await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "updatePassword failed", e)
+      Result.failure(e)
     }
   }
 }
