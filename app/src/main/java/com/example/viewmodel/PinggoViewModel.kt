@@ -263,9 +263,18 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun formatAuthError(err: Throwable): String {
     val msg = err.message ?: ""
+    val errorCode = if (err is com.google.firebase.auth.FirebaseAuthException) "[${err.errorCode}] " else ""
+    val projectId = FirebaseInitializer.diagnostic.value.projectId
+
     return when {
       msg.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) -> {
-        "CONFIGURATION_NOT_FOUND: Firebase Authentication is not enabled for this project in Firebase Console. Please enable Authentication & Sign-in providers (Email/Password, Anonymous, or Google)."
+        "CONFIGURATION_NOT_FOUND: Firebase Authentication is not fully configured for project $projectId.\n\n" +
+        "1. Ensure the Google provider is ENABLED in Firebase Console.\n" +
+        "2. Ensure the Web Client ID is correctly added to AI Studio secrets.\n" +
+        "3. Verify that the SHA-1 fingerprints are added to your Firebase project."
+      }
+      msg.contains("DEVELOPER_ERROR", ignoreCase = true) -> {
+        "DEVELOPER_ERROR: This usually means the SHA-1 fingerprint of the signing key is not registered in the Firebase Console, or the Web Client ID is invalid for this project ($projectId)."
       }
       msg.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) ||
       msg.contains("wrong password", ignoreCase = true) ||
@@ -285,7 +294,10 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       msg.contains("No credential available", ignoreCase = true) -> {
         "No Google account credentials available on this device."
       }
-      else -> msg.ifEmpty { "Authentication failed" }
+      msg.contains("network-request-failed", ignoreCase = true) -> {
+        "Network error. Please check your internet connection."
+      }
+      else -> "${errorCode}${msg}".ifEmpty { "Authentication failed (${err.javaClass.simpleName})" }
     }
   }
 

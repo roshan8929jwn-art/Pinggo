@@ -114,9 +114,11 @@ object FirebaseInitializer {
           projectId = options.projectId ?: "gen-lang-client-0572544439",
           appId = options.applicationId,
           storageBucket = options.storageBucket ?: "gen-lang-client-0572544439.firebasestorage.app",
-          errorMessage = serviceError,
+          errorMessage = serviceError ?: if (!authOk) "Auth service failed to start" else null,
+          errorDetails = "GCM Sender ID: ${options.gcmSenderId}\nAPI Key: ${options.apiKey.take(8)}...",
           initSource = initSource
         )
+        Log.i(TAG, "Firebase diagnostic info: $info")
         _diagnostic.value = info
         return info
       } else {

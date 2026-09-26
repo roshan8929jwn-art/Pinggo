@@ -309,17 +309,20 @@ class FirebaseAuthRepository(private val context: Context) {
         ?: resolvedSecretId.takeIf { it.isNotBlank() && !it.startsWith("YOUR_WEB") }
         ?: getWebClientIdFromResources()
 
-      if (resolvedClientId == null || resolvedClientId.isBlank() || resolvedClientId.contains("pinggo.apps")) {
+      Log.d("FirebaseAuthRepo", "Resolved Google Client ID: $resolvedClientId")
+
+      if (resolvedClientId.isNullOrBlank()) {
         return Result.failure(
           IllegalStateException(
-            "CONFIGURATION_NOT_FOUND: Google Sign-In requires an OAuth 2.0 Web Client ID in the Firebase project. Please enable Google provider in Firebase Console and ensure google-services.json includes the web client ID."
+            "Google Sign-In configuration is missing. Project: gen-lang-client-0572544439. " +
+            "Please ensure you have added the 'GOOGLE_WEB_CLIENT_ID' to your app secrets in AI Studio."
           )
         )
       }
 
       val googleIdOption = GetGoogleIdOption.Builder()
         .setFilterByAuthorizedAccounts(false)
-        .setServerClientId(resolvedClientId!!)
+        .setServerClientId(resolvedClientId)
         .setAutoSelectEnabled(false)
         .build()
 

@@ -1,4 +1,5 @@
 package com.example
+// Forcing rebuild for preview
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -17,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -120,7 +122,7 @@ class MainActivity : ComponentActivity() {
       ) {
         Surface(
           modifier = Modifier.fillMaxSize(),
-          color = Color.Transparent
+          color = MaterialTheme.colorScheme.background
         ) {
           Box(modifier = Modifier.fillMaxSize()) {
             when (currentScreen) {
