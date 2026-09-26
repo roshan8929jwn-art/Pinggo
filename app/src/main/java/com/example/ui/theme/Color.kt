@@ -3,18 +3,18 @@ package com.example.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Pinggo Pink Primary Palette (Brand Colors)
-val PinggoPinkPrimary = Color(0xFFFF69B4)
-val PinggoPinkLight = Color(0xFFFFB6D9)
-val PinggoPinkDeep = Color(0xFFC71585)
-val PinggoPinkGlow = Color(0x66FF69B4)
+val PinggoPinkPrimary = Color(0xFFFF69B4) // Hot Pink requested
+val PinggoPinkLight = Color(0xFFFFB6D9) // Soft Pink requested
+val PinggoPinkDeep = Color(0xFFE91E63) 
+val PinggoPinkGlow = Color(0x33FF69B4)
 
 // Neutral Palette - ENSURING HIGH CONTRAST (AS REQUESTED)
-val PinggoWhite = Color(0xFFFFFFFF)
-val PinggoOffWhite = Color(0xFFF8F8FA)
-val PinggoBlack = Color(0xFF121212)
+val PinggoWhite = Color(0xFFFFFFFF) // Primary background
+val PinggoOffWhite = Color(0xFFF8F8FA) // Secondary background
+val PinggoBlack = Color(0xFF1C1C1E) // Dark readable text requested
 
 // Light Theme Specific Colors
-val LightPrimaryText = Color(0xFF171717)
+val LightPrimaryText = Color(0xFF1C1C1E)
 val LightSecondaryText = Color(0xFF555555)
 val LightPlaceholderText = Color(0xFF666666)
 

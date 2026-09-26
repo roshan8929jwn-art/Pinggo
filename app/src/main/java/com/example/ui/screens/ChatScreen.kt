@@ -107,8 +107,8 @@ fun ChatScreen(
           .fillMaxWidth()
           .padding(horizontal = 14.dp, vertical = 6.dp),
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        color = Color.White.copy(alpha = 0.8f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.9f)),
         shadowElevation = 8.dp
       ) {
         Row(
@@ -344,8 +344,8 @@ fun ChatScreen(
           .navigationBarsPadding()
           .padding(horizontal = 14.dp, vertical = 8.dp),
         shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        color = Color.White.copy(alpha = 0.9f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.95f)),
         shadowElevation = 10.dp
       ) {
         Row(

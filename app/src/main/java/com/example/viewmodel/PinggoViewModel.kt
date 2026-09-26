@@ -145,6 +145,18 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private var callTimerJob: Job? = null
   private var callHistoryJob: Job? = null
   private var statusUpdatesJob: Job? = null
+  private var notificationsJob: Job? = null
+  private var friendRequestsJob: Job? = null
+  private var outgoingRequestsJob: Job? = null
+
+  private val _notifications = MutableStateFlow<List<com.example.model.Notification>>(emptyList())
+  val notifications: StateFlow<List<com.example.model.Notification>> = _notifications.asStateFlow()
+
+  private val _friendRequests = MutableStateFlow<List<com.example.model.FriendRequest>>(emptyList())
+  val friendRequests: StateFlow<List<com.example.model.FriendRequest>> = _friendRequests.asStateFlow()
+
+  private val _outgoingRequests = MutableStateFlow<List<com.example.model.FriendRequest>>(emptyList())
+  val outgoingRequests: StateFlow<List<com.example.model.FriendRequest>> = _outgoingRequests.asStateFlow()
 
   init {
     val prefs = application.getSharedPreferences("pinggo_settings", android.content.Context.MODE_PRIVATE)
@@ -163,6 +175,9 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           listenToIncomingCalls(user.uid)
           listenToCallHistory(user.uid)
           listenToStatusUpdates()
+          listenToNotifications(user.uid)
+          listenToFriendRequests(user.uid)
+          listenToOutgoingRequests(user.uid)
           
           // Migration for existing users
           viewModelScope.launch {
@@ -180,8 +195,94 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           _statusUpdates.value = emptyList()
           _callHistory.value = emptyList()
           _blockedUsersList.value = emptyList()
+          _notifications.value = emptyList()
+          _friendRequests.value = emptyList()
+          _outgoingRequests.value = emptyList()
         }
       }
+    }
+  }
+
+  private fun listenToNotifications(userId: String) {
+    notificationsJob?.cancel()
+    notificationsJob = viewModelScope.launch {
+      chatRepo.getNotificationsFlow(userId).collect { list ->
+        _notifications.value = list
+      }
+    }
+  }
+
+  private fun listenToFriendRequests(userId: String) {
+    friendRequestsJob?.cancel()
+    friendRequestsJob = viewModelScope.launch {
+      chatRepo.getFriendRequestsFlow(userId).collect { list ->
+        _friendRequests.value = list
+      }
+    }
+  }
+
+  private fun listenToOutgoingRequests(userId: String) {
+    outgoingRequestsJob?.cancel()
+    outgoingRequestsJob = viewModelScope.launch {
+      chatRepo.getOutgoingRequestsFlow(userId).collect { list ->
+        _outgoingRequests.value = list
+      }
+    }
+  }
+
+  fun sendFriendRequest(receiverId: String) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = chatRepo.sendFriendRequest(me, receiverId)
+      if (res.isSuccess) {
+        showToast("Friend request sent! 🐧")
+      } else {
+        showToast("Failed: ${res.exceptionOrNull()?.message}")
+      }
+    }
+  }
+
+  fun cancelFriendRequest(receiverId: String) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = chatRepo.cancelFriendRequest(me.uid, receiverId)
+      if (res.isSuccess) {
+        showToast("Request canceled")
+      }
+    }
+  }
+
+  fun acceptFriendRequest(requestId: String) {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      val res = chatRepo.acceptFriendRequest(requestId, me)
+      if (res.isSuccess) {
+        showToast("Friend request accepted! ✨")
+      } else {
+        showToast("Failed to accept: ${res.exceptionOrNull()?.message}")
+      }
+    }
+  }
+
+  fun declineFriendRequest(requestId: String) {
+    viewModelScope.launch {
+      val res = chatRepo.declineFriendRequest(requestId)
+      if (res.isSuccess) {
+        showToast("Request declined")
+      }
+    }
+  }
+
+  fun markNotificationAsRead(id: String) {
+    viewModelScope.launch {
+      chatRepo.markNotificationAsRead(id)
+    }
+  }
+
+  fun clearNotifications() {
+    val me = userProfile.value ?: return
+    viewModelScope.launch {
+      chatRepo.clearAllNotifications(me.uid)
     }
   }
 
@@ -1102,5 +1203,8 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     typingJob?.cancel()
     incomingCallJob?.cancel()
     callTimerJob?.cancel()
+    notificationsJob?.cancel()
+    friendRequestsJob?.cancel()
+    outgoingRequestsJob?.cancel()
   }
 }

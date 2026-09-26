@@ -871,4 +871,188 @@ class FirestoreChatRepository {
       // ignore
     }
   }
+
+  // --- Friend Requests & Notifications ---
+
+  suspend fun sendFriendRequest(sender: User, receiverId: String): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore not available"))
+    try {
+      val requestId = "${sender.uid}_$receiverId"
+      val request = com.example.model.FriendRequest(
+        id = requestId,
+        senderId = sender.uid,
+        senderName = sender.displayName,
+        senderUsername = sender.username,
+        senderPhoto = sender.photoURL,
+        receiverId = receiverId,
+        status = "pending",
+        timestamp = System.currentTimeMillis()
+      )
+
+      db.collection("friend_requests").document(requestId).set(request.toMap()).await()
+
+      // Create notification for receiver
+      val notifId = UUID.randomUUID().toString()
+      val notif = com.example.model.Notification(
+        id = notifId,
+        recipientId = receiverId,
+        senderId = sender.uid,
+        senderName = sender.displayName,
+        senderUsername = sender.username,
+        senderPhoto = sender.photoURL,
+        type = "friend_request",
+        content = "${sender.displayName} (@${sender.username}) sent you a friend request.",
+        relatedId = requestId
+      )
+      db.collection("notifications").document(notifId).set(notif.toMap()).await()
+
+      return Result.success(Unit)
+    } catch (e: Exception) {
+      return Result.failure(e)
+    }
+  }
+
+  suspend fun cancelFriendRequest(senderId: String, receiverId: String): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore not available"))
+    try {
+      val requestId = "${senderId}_$receiverId"
+      db.collection("friend_requests").document(requestId).delete().await()
+      return Result.success(Unit)
+    } catch (e: Exception) {
+      return Result.failure(e)
+    }
+  }
+
+  suspend fun acceptFriendRequest(requestId: String, receiver: User): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore not available"))
+    try {
+      val requestDoc = db.collection("friend_requests").document(requestId).get().await()
+      if (!requestDoc.exists()) return Result.failure(Exception("Request not found"))
+      
+      val senderId = requestDoc.getString("senderId") ?: ""
+      val senderName = requestDoc.getString("senderName") ?: ""
+      
+      db.runTransaction { transaction ->
+        // Update request status
+        transaction.update(db.collection("friend_requests").document(requestId), "status", "accepted")
+        
+        // Update both users friends list
+        val receiverRef = db.collection("users").document(receiver.uid)
+        val senderRef = db.collection("users").document(senderId)
+        
+        transaction.update(receiverRef, "friends", com.google.firebase.firestore.FieldValue.arrayUnion(senderId))
+        transaction.update(senderRef, "friends", com.google.firebase.firestore.FieldValue.arrayUnion(receiver.uid))
+      }.await()
+
+      // Create notification for sender
+      val notifId = UUID.randomUUID().toString()
+      val notif = com.example.model.Notification(
+        id = notifId,
+        recipientId = senderId,
+        senderId = receiver.uid,
+        senderName = receiver.displayName,
+        senderUsername = receiver.username,
+        senderPhoto = receiver.photoURL,
+        type = "request_accepted",
+        content = "${receiver.displayName} accepted your friend request!",
+        relatedId = requestId
+      )
+      db.collection("notifications").document(notifId).set(notif.toMap()).await()
+
+      return Result.success(Unit)
+    } catch (e: Exception) {
+      return Result.failure(e)
+    }
+  }
+
+  suspend fun declineFriendRequest(requestId: String): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firestore not available"))
+    try {
+      db.collection("friend_requests").document(requestId).update("status", "declined").await()
+      return Result.success(Unit)
+    } catch (e: Exception) {
+      return Result.failure(e)
+    }
+  }
+
+  fun getNotificationsFlow(userId: String): Flow<List<com.example.model.Notification>> = callbackFlow {
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
+    val listener = db.collection("notifications")
+      .whereEqualTo("recipientId", userId)
+      .orderBy("timestamp", Query.Direction.DESCENDING)
+      .addSnapshotListener { snapshot, error ->
+        if (snapshot != null) {
+          val list = snapshot.documents.mapNotNull { doc ->
+            com.example.model.Notification.fromMap(doc.id, doc.data ?: return@mapNotNull null)
+          }
+          trySend(list)
+        }
+      }
+    awaitClose { listener.remove() }
+  }
+
+  suspend fun markNotificationAsRead(notificationId: String) {
+    firestore?.collection("notifications")?.document(notificationId)?.update("isRead", true)?.await()
+  }
+
+  suspend fun clearAllNotifications(userId: String) {
+    val db = firestore ?: return
+    try {
+      val snapshot = db.collection("notifications")
+        .whereEqualTo("recipientId", userId)
+        .get().await()
+      db.runBatch { batch ->
+        for (doc in snapshot.documents) {
+          batch.delete(doc.reference)
+        }
+      }.await()
+    } catch (e: Exception) { }
+  }
+
+  fun getFriendRequestsFlow(userId: String): Flow<List<com.example.model.FriendRequest>> = callbackFlow {
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
+    val listener = db.collection("friend_requests")
+      .whereEqualTo("receiverId", userId)
+      .whereEqualTo("status", "pending")
+      .addSnapshotListener { snapshot, error ->
+        if (snapshot != null) {
+          val list = snapshot.documents.mapNotNull { doc ->
+            com.example.model.FriendRequest.fromMap(doc.id, doc.data ?: return@mapNotNull null)
+          }
+          trySend(list)
+        }
+      }
+    awaitClose { listener.remove() }
+  }
+
+  fun getOutgoingRequestsFlow(userId: String): Flow<List<com.example.model.FriendRequest>> = callbackFlow {
+    val db = firestore
+    if (db == null) {
+      trySend(emptyList())
+      awaitClose { }
+      return@callbackFlow
+    }
+    val listener = db.collection("friend_requests")
+      .whereEqualTo("senderId", userId)
+      .whereEqualTo("status", "pending")
+      .addSnapshotListener { snapshot, error ->
+        if (snapshot != null) {
+          val list = snapshot.documents.mapNotNull { doc ->
+            com.example.model.FriendRequest.fromMap(doc.id, doc.data ?: return@mapNotNull null)
+          }
+          trySend(list)
+        }
+      }
+    awaitClose { listener.remove() }
+  }
 }

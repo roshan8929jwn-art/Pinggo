@@ -108,6 +108,7 @@ fun HomeScreen(
   onOpenSearch: () -> Unit,
   onOpenCreateGroup: () -> Unit,
   onOpenSettings: (String) -> Unit,
+  onOpenNotifications: () -> Unit,
   initialTab: String = "Chats"
 ) {
   var selectedTab by rememberSaveable { mutableStateOf(initialTab) } // "Chats", "Calls", "Updates", "Profile"
@@ -162,7 +163,8 @@ fun HomeScreen(
             onOpenChat = onOpenChat,
             onOpenSearch = onOpenSearch,
             onOpenCreateGroup = onOpenCreateGroup,
-            onOpenSettings = onOpenSettings
+            onOpenSettings = onOpenSettings,
+            onOpenNotifications = onOpenNotifications
           )
           "Calls" -> CallsTab(viewModel = viewModel, onOpenSearch = onOpenSearch)
           "Updates" -> UpdatesTab(viewModel = viewModel)
@@ -218,11 +220,15 @@ fun ChatsTab(
   onOpenChat: (Conversation) -> Unit,
   onOpenSearch: () -> Unit,
   onOpenCreateGroup: () -> Unit,
-  onOpenSettings: (String) -> Unit
+  onOpenSettings: (String) -> Unit,
+  onOpenNotifications: () -> Unit
 ) {
   val conversations by viewModel.conversations.collectAsState()
   val currentUser by viewModel.userProfile.collectAsState()
   val selectedFilter by viewModel.selectedFilter.collectAsState()
+  val notifications by viewModel.notifications.collectAsState()
+  val unreadNotifications = remember(notifications) { notifications.count { !it.isRead } }
+
   var searchQuery by remember { mutableStateOf("") }
   var showMenu by remember { mutableStateOf(false) }
 

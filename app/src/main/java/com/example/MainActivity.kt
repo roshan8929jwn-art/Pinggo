@@ -61,7 +61,8 @@ enum class PinggoScreen {
   DIAGNOSTIC,
   SIGN_UP,
   PASSWORD_LOGIN,
-  OTP_VERIFICATION
+  OTP_VERIFICATION,
+  NOTIFICATIONS
 }
 
 class MainActivity : ComponentActivity() {
@@ -274,7 +275,20 @@ class MainActivity : ComponentActivity() {
                   onOpenSettings = { section ->
                     settingsSection = section
                     currentScreen = PinggoScreen.SETTINGS
+                  },
+                  onOpenNotifications = {
+                    currentScreen = PinggoScreen.NOTIFICATIONS
                   }
+                )
+              }
+
+              PinggoScreen.NOTIFICATIONS -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.HOME
+                }
+                com.example.ui.screens.NotificationInboxScreen(
+                  viewModel = viewModel,
+                  onBack = { currentScreen = PinggoScreen.HOME }
                 )
               }
 
