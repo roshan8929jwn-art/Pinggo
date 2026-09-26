@@ -25,7 +25,8 @@ data class User(
   val callRingtoneUri: String = "",
   val callRingtoneTitle: String = "Default Ringtone",
   val notificationRingtoneUri: String = "",
-  val notificationRingtoneTitle: String = "Default Notification"
+  val notificationRingtoneTitle: String = "Default Notification",
+  val otpVerified: Boolean = false
 ) {
   fun toMap(): Map<String, Any?> {
     return mapOf(
@@ -53,7 +54,8 @@ data class User(
       "callRingtoneUri" to callRingtoneUri,
       "callRingtoneTitle" to callRingtoneTitle,
       "notificationRingtoneUri" to notificationRingtoneUri,
-      "notificationRingtoneTitle" to notificationRingtoneTitle
+      "notificationRingtoneTitle" to notificationRingtoneTitle,
+      "otpVerified" to otpVerified
     )
   }
 
@@ -85,7 +87,8 @@ data class User(
         callRingtoneUri = map["callRingtoneUri"] as? String ?: "",
         callRingtoneTitle = map["callRingtoneTitle"] as? String ?: "Default Ringtone",
         notificationRingtoneUri = map["notificationRingtoneUri"] as? String ?: "",
-        notificationRingtoneTitle = map["notificationRingtoneTitle"] as? String ?: "Default Notification"
+        notificationRingtoneTitle = map["notificationRingtoneTitle"] as? String ?: "Default Notification",
+        otpVerified = map["otpVerified"] as? Boolean ?: false
       )
     }
   }

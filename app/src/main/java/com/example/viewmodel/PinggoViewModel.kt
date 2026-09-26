@@ -267,42 +267,41 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun formatAuthError(err: Throwable): String {
     val msg = err.message ?: ""
-    val errorCode = if (err is com.google.firebase.auth.FirebaseAuthException) "[${err.errorCode}] " else ""
+    val errorCode = when (err) {
+      is com.google.firebase.auth.FirebaseAuthException -> "[${err.errorCode}] "
+      is com.google.firebase.functions.FirebaseFunctionsException -> "[${err.code}] "
+      else -> ""
+    }
     val projectId = FirebaseInitializer.diagnostic.value.projectId
 
     return when {
-      msg.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) -> {
-        "CONFIGURATION_NOT_FOUND: Firebase Authentication is not fully configured for project $projectId.\n\n" +
-        "1. Ensure the Google provider is ENABLED in Firebase Console.\n" +
-        "2. Ensure the Web Client ID is correctly added to AI Studio secrets.\n" +
-        "3. Verify that the SHA-1 fingerprints are added to your Firebase project."
+      msg.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) || msg.contains("not found", ignoreCase = true) -> {
+        "SERVICE_NOT_FOUND: The authentication backend is not fully deployed for $projectId.\n\n" +
+        "Please ensure you have deployed the 'sendOtp' and 'verifyOtp' Cloud Functions using the Firebase CLI."
+      }
+      msg.contains("resource-exhausted", ignoreCase = true) || msg.contains("cooldown", ignoreCase = true) -> {
+        "Please wait a few minutes before requesting another verification code."
+      }
+      msg.contains("permission-denied", ignoreCase = true) || msg.contains("invalid code", ignoreCase = true) -> {
+        "Incorrect verification code. Please try again."
+      }
+      msg.contains("deadline-exceeded", ignoreCase = true) || msg.contains("expired", ignoreCase = true) -> {
+        "This code has expired. Please request a new one."
       }
       msg.contains("DEVELOPER_ERROR", ignoreCase = true) -> {
-        "DEVELOPER_ERROR: This usually means the SHA-1 fingerprint of the signing key is not registered in the Firebase Console, or the Web Client ID is invalid for this project ($projectId)."
+        "DEVELOPER_ERROR: Check SHA-1 fingerprints and Google Sign-In configuration in Firebase Console ($projectId)."
       }
       msg.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) ||
-      msg.contains("wrong password", ignoreCase = true) ||
-      msg.contains("user-not-found", ignoreCase = true) -> {
+      msg.contains("wrong password", ignoreCase = true) -> {
         "Invalid email or password. Please verify and try again."
-      }
-      msg.contains("email-already-in-use", ignoreCase = true) ||
-      msg.contains("EMAIL_EXISTS", ignoreCase = true) -> {
-        "This email is already in use. Please sign in instead."
-      }
-      msg.contains("weak-password", ignoreCase = true) -> {
-        "Password must be at least 6 characters."
-      }
-      msg.contains("invalid-email", ignoreCase = true) -> {
-        "Please enter a valid email address."
       }
       msg.contains("network-request-failed", ignoreCase = true) -> {
         "Network error. Please check your internet connection."
       }
       msg.contains("No credential available", ignoreCase = true) -> {
-        // Instead of mapping to a string, we return the raw message or a clearer one
-        "Google Sign-In failed: No Google account found on this device. Please sign in to your Google account in device settings or use Email/Password login."
+        "Google Sign-In failed: No Google account found on this device."
       }
-      else -> "${errorCode}${msg}".ifEmpty { "Authentication failed (${err.javaClass.simpleName})" }
+      else -> "${errorCode}${msg}".ifEmpty { "Error: ${err.javaClass.simpleName}" }
     }
   }
 
@@ -834,7 +833,9 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       if (res.isSuccess) {
         val user = currentUser.value
         if (user != null && !user.isEmailVerified) {
-          showToast("Account created! Please check your inbox and verify your email.")
+          // Trigger OTP send immediately on successful registration
+          authRepo.sendOtp(email)
+          showToast("Account created! Verification code sent to $email.")
         } else {
           showToast("Account created successfully!")
         }
@@ -884,7 +885,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       if (res.isSuccess) {
         showToast("OTP sent to $email")
       } else {
-        showToast("Failed to send OTP: ${res.exceptionOrNull()?.message}")
+        _authError.value = formatAuthError(res.exceptionOrNull() ?: Exception("Failed to send OTP"))
       }
     }
   }
@@ -894,9 +895,11 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       val res = authRepo.verifyOtp(email, otp)
       if (res.isSuccess) {
         showToast("OTP Verified! ✨")
+        // Refresh local profile
+        currentUser.value?.uid?.let { authRepo.loadUserProfile(it) }
         onResult(true)
       } else {
-        showToast(res.exceptionOrNull()?.message ?: "Verification failed")
+        _authError.value = formatAuthError(res.exceptionOrNull() ?: Exception("Verification failed"))
         onResult(false)
       }
     }

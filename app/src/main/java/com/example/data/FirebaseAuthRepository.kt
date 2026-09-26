@@ -308,7 +308,6 @@ class FirebaseAuthRepository(private val context: Context) {
       val resolvedClientId: String? = webClientId?.takeIf { it.isNotBlank() }
         ?: resolvedSecretId.takeIf { it.isNotBlank() && !it.startsWith("YOUR_WEB") }
         ?: getWebClientIdFromResources()
-        ?: "496832475693-2n35psfvke0hlq7v016btdq803d03bfe.apps.googleusercontent.com" // Hardcoded project-specific fallback
 
       Log.d("FirebaseAuthRepo", "Resolved Google Client ID: $resolvedClientId")
 
@@ -459,7 +458,7 @@ class FirebaseAuthRepository(private val context: Context) {
     val actionCodeSettings = ActionCodeSettings.newBuilder()
       .setUrl("https://gen-lang-client-0572544439.firebaseapp.com/login?email=${Uri.encode(email.trim())}")
       .setHandleCodeInApp(true)
-      .setAndroidPackageName("com.aistudio.pinggo.vuxowh", true, "1")
+      .setAndroidPackageName("com.example", true, "1")
       .build()
     return try {
       a.sendSignInLinkToEmail(email.trim(), actionCodeSettings).await()
@@ -712,12 +711,7 @@ class FirebaseAuthRepository(private val context: Context) {
       Result.success(Unit)
     } catch (e: Exception) {
       Log.e("FirebaseAuthRepo", "sendOtp call failed", e)
-      // Fallback for demo if functions are not deployed:
-      // return Result.failure(e)
-      
-      // FOR DEMO PURPOSES ONLY: if the function is not found (not deployed), 
-      // we'll log it and tell the user they need to deploy the provided functions.
-      Result.failure(Exception("Cloud Function 'sendOtp' not found or failed. Please deploy the provided firebase_otp_functions.js to your Firebase project."))
+      Result.failure(e)
     }
   }
 
@@ -731,7 +725,7 @@ class FirebaseAuthRepository(private val context: Context) {
       Result.success(Unit)
     } catch (e: Exception) {
       Log.e("FirebaseAuthRepo", "verifyOtp call failed", e)
-      Result.failure(Exception("OTP Verification failed: ${e.message}. Ensure backend is deployed."))
+      Result.failure(e)
     }
   }
 

@@ -1,14 +1,17 @@
 /**
  * Firebase Cloud Functions implementation for Pinggo Email OTP Verification.
  * 
- * To deploy:
- * 1. Install Firebase CLI: npm install -g firebase-tools
- * 2. Run: firebase init functions
- * 3. Copy this code to functions/index.js
- * 4. Configure email provider (e.g. Gmail) credentials in environment:
+ * REQUIREMENTS:
+ * 1. Firebase Project must be on the BLAZE (Pay-as-you-go) plan to allow outgoing network requests to email providers.
+ * 2. You need an email account (e.g., Gmail with App Password, or SendGrid/Mailgun API).
+ * 
+ * DEPLOYMENT (Using Firebase CLI):
+ * 1. firebase init functions (select JavaScript)
+ * 2. Set secrets:
  *    firebase functions:secrets:set EMAIL_USER
  *    firebase functions:secrets:set EMAIL_PASS
- * 5. Run: firebase deploy --only functions
+ * 3. Copy this code to functions/index.js
+ * 4. Run: firebase deploy --only functions
  */
 
 const functions = require('firebase-functions');
@@ -19,33 +22,44 @@ const crypto = require('crypto');
 admin.initializeApp();
 
 /**
- * Generates a 6-digit numeric OTP and sends it to the user's email.
- * This is a secure HTTPS Callable function.
+ * sendOtp: Generates and sends a 6-digit OTP.
  */
-exports.sendOtp = functions.https.onCall(async (data, context) => {
+exports.sendOtp = functions.runWith({ secrets: ["EMAIL_USER", "EMAIL_PASS"] }).https.onCall(async (data, context) => {
     const email = data.email;
+    const uid = context.auth ? context.auth.uid : null;
+
     if (!email || !email.includes('@')) {
-        throw new functions.https.HttpsError('invalid-argument', 'Valid email is required.');
+        throw new functions.https.HttpsError('invalid-argument', 'A valid email address is required.');
     }
 
-    // Generate a secure 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Hash the OTP for secure storage
-    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-    
     const db = admin.firestore();
-    const expiresAt = Date.now() + 300000; // 5 minutes from now
+    const docRef = db.collection('otp_challenges').doc(email);
+    const snapshot = await docRef.get();
 
-    // Store the challenge securely in Firestore
-    // Access is restricted via Firestore Rules (ensure rules are configured to deny client read/write to this collection)
-    await db.collection('otp_challenges').document(email).set({
+    // 1. Abuse Protection: Cooldown check (2 minutes)
+    if (snapshot.exists) {
+        const lastSentAt = snapshot.data().lastSentAt;
+        if (lastSentAt && (Date.now() - lastSentAt < 120000)) {
+            throw new functions.https.HttpsError('resource-exhausted', 'Please wait 2 minutes before requesting another code.');
+        }
+    }
+
+    // 2. Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    const expiresAt = Date.now() + 600000; // 10 minutes expiry
+
+    // 3. Store challenge securely
+    await docRef.set({
         hashedOtp: hashedOtp,
         expiresAt: expiresAt,
-        attempts: 0
+        lastSentAt: Date.now(),
+        attempts: 0,
+        uid: uid // Optional: link to a specific user if authenticated
     });
 
-    // Send the email
+    // 4. Configure Mailer
+    // Note: If using Gmail, you MUST use an "App Password" (not your main password).
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -57,76 +71,90 @@ exports.sendOtp = functions.https.onCall(async (data, context) => {
     const mailOptions = {
         from: '"Pinggo Messenger" <no-reply@pinggo.app>',
         to: email,
-        subject: 'Your Pinggo Verification Code',
+        subject: 'Pinggo Verification Code',
         html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                <h2 style="color: #FF69B4;">Welcome to Pinggo! 🐧</h2>
-                <p>Use the following code to verify your email and complete your profile setup:</p>
-                <div style="background: #F8F8FA; padding: 20px; text-align: center; border-radius: 12px; margin: 20px 0;">
-                    <h1 style="letter-spacing: 10px; font-size: 36px; margin: 0; color: #1C1C1E;">${otp}</h1>
+            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E5EA; border-radius: 16px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #FF1493; margin: 0;">Pinggo 🐧</h1>
+                    <p style="color: #8E8E93; font-size: 14px; margin-top: 5px;">Same Vibes, New Experience</p>
                 </div>
-                <p>This code will expire in 5 minutes.</p>
-                <p>If you didn't request this code, you can safely ignore this email.</p>
-                <hr style="border: 0; border-top: 1px solid #EEEEEE; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #8E8E93;">Pinggo — Same Vibes, New Experience</p>
+                <div style="background: #F2F2F7; padding: 30px; text-align: center; border-radius: 12px; margin-bottom: 30px;">
+                    <p style="margin: 0 0 15px 0; font-size: 16px; color: #1C1C1E;">Your verification code is:</p>
+                    <h2 style="letter-spacing: 8px; font-size: 42px; margin: 0; color: #FF1493;">${otp}</h2>
+                    <p style="margin: 15px 0 0 0; font-size: 14px; color: #8E8E93;">Expires in 10 minutes</p>
+                </div>
+                <p style="font-size: 14px; line-height: 1.5; color: #3A3A3C;">
+                    Enter this code in the app to verify your identity. If you didn't request this, you can ignore this email.
+                </p>
+                <div style="border-top: 1px solid #E5E5EA; margin-top: 30px; padding-top: 20px; text-align: center; color: #8E8E93; font-size: 12px;">
+                    &copy; ${new Date().getFullYear()} Pinggo Messenger. Secure OTP Verification.
+                </div>
             </div>
         `
     };
 
     try {
         await transporter.sendMail(mailOptions);
-        return { success: true, message: 'OTP sent successfully' };
+        return { success: true };
     } catch (error) {
-        console.error('Error sending email:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to send verification email.');
+        console.error('Mail transport error:', error);
+        throw new functions.https.HttpsError('internal', 'Unable to send email. Check backend configuration.');
     }
 });
 
 /**
- * Verifies the OTP provided by the user.
- * This is a secure HTTPS Callable function.
+ * verifyOtp: Validates OTP and marks user as verified in Firestore.
  */
 exports.verifyOtp = functions.https.onCall(async (data, context) => {
     const email = data.email;
     const otp = data.otp;
 
     if (!email || !otp) {
-        throw new functions.https.HttpsError('invalid-argument', 'Email and OTP are required.');
+        throw new functions.https.HttpsError('invalid-argument', 'Email and code are required.');
     }
 
     const db = admin.firestore();
-    const docRef = db.collection('otp_challenges').document(email);
+    const docRef = db.collection('otp_challenges').doc(email);
     const doc = await docRef.get();
 
     if (!doc.exists) {
-        throw new functions.https.HttpsError('not-found', 'No verification request found for this email.');
+        throw new functions.https.HttpsError('not-found', 'No active verification request found.');
     }
 
     const challenge = doc.data();
-    
-    // Rate limiting: check attempts
-    if (challenge.attempts >= 5) {
-        throw new functions.https.HttpsError('resource-exhausted', 'Too many incorrect attempts. Please request a new code.');
-    }
 
-    // Check expiration
+    // 1. Check expiration
     if (Date.now() > challenge.expiresAt) {
         await docRef.delete();
-        throw new functions.https.HttpsError('deadline-exceeded', 'OTP has expired. Please request a new code.');
+        throw new functions.https.HttpsError('deadline-exceeded', 'The verification code has expired.');
     }
 
-    // Verify hashed OTP
+    // 2. Check attempt limits (Abuse Protection)
+    if (challenge.attempts >= 3) {
+        throw new functions.https.HttpsError('permission-denied', 'Too many failed attempts. Please request a new code.');
+    }
+
+    // 3. Verify Hash
     const inputHash = crypto.createHash('sha256').update(otp).digest('hex');
     if (inputHash === challenge.hashedOtp) {
-        // Success: Mark email as verified in the user's profile if needed,
-        // or just return success so the client can proceed.
-        // For security, the backend should ideally be the one to update the 'emailVerified' flag.
-        
+        // Success: Clean up challenge
         await docRef.delete();
+
+        // 4. Update User Profile if authenticated
+        // If the user is already logged in, we mark their profile as verified.
+        // If not, they'll be marked after login (client-side will proceed to profile setup).
+        const targetUid = context.auth ? context.auth.uid : challenge.uid;
+        if (targetUid) {
+            await db.collection('users').doc(targetUid).update({
+                otpVerified: true,
+                emailVerified: true // Also mark standard Firebase email as verified for convenience
+            });
+        }
+
         return { success: true };
     } else {
         // Increment attempts
         await docRef.update({ attempts: admin.firestore.FieldValue.increment(1) });
-        throw new functions.https.HttpsError('permission-denied', 'Incorrect verification code.');
+        throw new functions.https.HttpsError('permission-denied', 'Invalid verification code.');
     }
 });

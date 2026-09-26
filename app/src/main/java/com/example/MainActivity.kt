@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,6 +42,7 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.ProfileSetupScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.OtpVerificationScreen
 import com.example.ui.screens.SignUpScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.theme.AppThemeMode
@@ -57,7 +60,8 @@ enum class PinggoScreen {
   SETTINGS,
   DIAGNOSTIC,
   SIGN_UP,
-  PASSWORD_LOGIN
+  PASSWORD_LOGIN,
+  OTP_VERIFICATION
 }
 
 class MainActivity : ComponentActivity() {
@@ -107,9 +111,14 @@ class MainActivity : ComponentActivity() {
         }
       }
 
-      LaunchedEffect(currentUser, isGuestMode) {
-        if (currentUser == null && !isGuestMode && currentScreen != PinggoScreen.SPLASH && currentScreen != PinggoScreen.LOGIN && currentScreen != PinggoScreen.DIAGNOSTIC) {
+      LaunchedEffect(currentUser, isGuestMode, userProfile) {
+        if (currentUser == null && !isGuestMode && currentScreen != PinggoScreen.SPLASH && currentScreen != PinggoScreen.LOGIN && currentScreen != PinggoScreen.DIAGNOSTIC && currentScreen != PinggoScreen.SIGN_UP && currentScreen != PinggoScreen.PASSWORD_LOGIN) {
           currentScreen = PinggoScreen.LOGIN
+        } else if (currentUser != null && !isGuestMode) {
+          // Force OTP verification if not verified
+          if (userProfile != null && !userProfile!!.otpVerified && currentScreen != PinggoScreen.OTP_VERIFICATION && currentScreen != PinggoScreen.DIAGNOSTIC) {
+            currentScreen = PinggoScreen.OTP_VERIFICATION
+          }
         }
       }
 
@@ -132,7 +141,9 @@ class MainActivity : ComponentActivity() {
                   onReady = {
                     currentScreen = when {
                       currentUser != null -> {
-                        if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
+                        if (userProfile != null && !userProfile!!.otpVerified) {
+                          PinggoScreen.OTP_VERIFICATION
+                        } else if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
                           PinggoScreen.PROFILE_SETUP
                         } else {
                           PinggoScreen.HOME
@@ -149,7 +160,9 @@ class MainActivity : ComponentActivity() {
                 LoginScreen(
                   viewModel = viewModel,
                   onLoggedIn = {
-                    currentScreen = if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
+                    currentScreen = if (userProfile != null && !userProfile!!.otpVerified) {
+                      PinggoScreen.OTP_VERIFICATION
+                    } else if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
                       PinggoScreen.PROFILE_SETUP
                     } else {
                       PinggoScreen.HOME
@@ -217,6 +230,31 @@ class MainActivity : ComponentActivity() {
                   viewModel = viewModel,
                   onProfileCreated = {
                     currentScreen = PinggoScreen.HOME
+                  }
+                )
+              }
+
+              PinggoScreen.OTP_VERIFICATION -> {
+                val email = currentUser?.email ?: ""
+                OtpVerificationScreen(
+                  viewModel = viewModel,
+                  email = email,
+                  onBack = {
+                    viewModel.signOut()
+                    currentScreen = PinggoScreen.LOGIN
+                  },
+                  onVerified = {
+                    // Refresh profile after verification
+                    currentUser?.uid?.let { uid ->
+                      lifecycleScope.launch {
+                        viewModel.authRepo.loadUserProfile(uid)
+                      }
+                    }
+                    currentScreen = if (userProfile == null || userProfile?.username.isNullOrEmpty()) {
+                      PinggoScreen.PROFILE_SETUP
+                    } else {
+                      PinggoScreen.HOME
+                    }
                   }
                 )
               }
