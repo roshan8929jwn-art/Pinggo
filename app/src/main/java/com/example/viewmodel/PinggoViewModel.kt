@@ -521,8 +521,45 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     conversationsJob?.cancel()
     conversationsJob = viewModelScope.launch {
       chatRepo.getConversationsFlow(userId).collect { list ->
-        _conversations.value = list
+        val sorted = list.sortedWith(
+          compareByDescending<Conversation> { it.pinnedBy.contains(userId) }
+            .thenByDescending { it.lastMessageTimestamp }
+        )
+        _conversations.value = sorted
       }
+    }
+  }
+
+  fun togglePinConversation(conversationId: String, isPinned: Boolean) {
+    val userId = currentUser.value?.uid ?: return
+    viewModelScope.launch {
+      chatRepo.togglePin(conversationId, userId, isPinned)
+    }
+  }
+
+  fun muteConversation(conversationId: String, durationHours: Int?) {
+    val userId = currentUser.value?.uid ?: return
+    val until = if (durationHours != null) {
+      System.currentTimeMillis() + (durationHours * 3600 * 1000L)
+    } else {
+      -1L // Until I change it
+    }
+    viewModelScope.launch {
+      chatRepo.muteConversation(conversationId, userId, until)
+    }
+  }
+
+  fun unmuteConversation(conversationId: String) {
+    val userId = currentUser.value?.uid ?: return
+    viewModelScope.launch {
+      chatRepo.muteConversation(conversationId, userId, 0L)
+    }
+  }
+
+  fun deleteConversation(conversationId: String) {
+    val userId = currentUser.value?.uid ?: return
+    viewModelScope.launch {
+      chatRepo.deleteConversation(conversationId, userId)
     }
   }
 

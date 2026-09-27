@@ -31,13 +31,14 @@ private val LightColorScheme = lightColorScheme(
   secondary = PinggoPinkPrimary,
   onSecondary = Color.White,
   tertiary = PinggoPinkLight,
-  background = PinggoWhite, // Pure white background as requested
+  background = PinggoWhite,
   onBackground = LightPrimaryText,
-  surface = PinggoOffWhite, // Secondary background as requested
+  surface = PinggoWhite,
   onSurface = LightPrimaryText,
-  surfaceVariant = Color(0xFFF2F2F7),
+  surfaceVariant = PinggoOffWhite,
   onSurfaceVariant = LightSecondaryText,
-  outline = GlassBorder,
+  outline = LightSecondaryText.copy(alpha = 0.2f),
+  outlineVariant = LightSecondaryText.copy(alpha = 0.1f),
   error = DestructiveRed,
   onError = Color.White
 )
@@ -50,13 +51,14 @@ private val DarkColorScheme = darkColorScheme(
   secondary = PinggoPinkPrimary,
   onSecondary = Color.White,
   tertiary = PinggoPinkLight,
-  background = DarkBackground,
+  background = PinggoWhite, // Forced white
   onBackground = DarkPrimaryText,
-  surface = DarkSurface,
+  surface = PinggoWhite,
   onSurface = DarkPrimaryText,
-  surfaceVariant = Color(0xFF2C2C2E),
+  surfaceVariant = PinggoOffWhite,
   onSurfaceVariant = DarkSecondaryText,
-  outline = PinggoPinkGlow,
+  outline = DarkSecondaryText.copy(alpha = 0.2f),
+  outlineVariant = DarkSecondaryText.copy(alpha = 0.1f),
   error = DestructiveRed,
   onError = Color.White
 )

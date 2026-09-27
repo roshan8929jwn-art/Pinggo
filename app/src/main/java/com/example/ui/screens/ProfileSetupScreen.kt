@@ -37,9 +37,10 @@ import coil.compose.AsyncImage
 import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassInput
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.liquidDrop
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.ui.components.PinggoBubbleIcon
-import com.example.ui.theme.PinggoPinkPrimary
-import com.example.ui.theme.PinggoPinkLight
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 import kotlinx.coroutines.delay
 
@@ -96,10 +97,15 @@ fun ProfileSetupScreen(
           .padding(top = 10.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        IconButton(onClick = { 
-          if (currentStep > 1) currentStep--
-        }, modifier = Modifier.size(40.dp)) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground)
+        val backInteraction = remember { MutableInteractionSource() }
+        IconButton(
+          onClick = { if (currentStep > 1) currentStep-- },
+          interactionSource = backInteraction,
+          modifier = Modifier
+            .size(40.dp)
+            .liquidDrop(interactionSource = backInteraction, isPinkTint = true, maxRadius = 22.dp)
+        ) {
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = LightPrimaryText)
         }
         Spacer(modifier = Modifier.width(6.dp))
         PinggoBubbleIcon(size = 32.dp)
@@ -112,7 +118,7 @@ fun ProfileSetupScreen(
               else -> "Email OTP Verification"
             },
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = LightPrimaryText
           )
           Text(
             text = when(currentStep) {
@@ -121,7 +127,7 @@ fun ProfileSetupScreen(
               else -> "Enter the 6-digit code sent to your email"
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
+            color = LightSecondaryText
           )
         }
       }
@@ -131,6 +137,7 @@ fun ProfileSetupScreen(
       when (currentStep) {
         1 -> {
           // Profile Info Step
+          val photoInteraction = remember { MutableInteractionSource() }
           Box(
             modifier = Modifier
               .size(110.dp)
@@ -141,7 +148,11 @@ fun ProfileSetupScreen(
                 )
               )
               .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
-              .clickable { photoPickerLauncher.launch("image/*") },
+              .liquidDrop(interactionSource = photoInteraction, isPinkTint = true, maxRadius = 60.dp)
+              .clickable(
+                interactionSource = photoInteraction,
+                indication = ripple(bounded = false, color = PinggoPinkPrimary)
+              ) { photoPickerLauncher.launch("image/*") },
             contentAlignment = Alignment.Center
           ) {
             if (selectedImageUri != null) {
@@ -171,7 +182,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(30.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Display Name", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+            Text(text = "Display Name", style = MaterialTheme.typography.labelLarge, color = LightPrimaryText, fontWeight = FontWeight.Bold)
             GlassInput(
               value = displayName,
               onValueChange = { displayName = it },
@@ -183,7 +194,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(18.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Username", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+            Text(text = "Username", style = MaterialTheme.typography.labelLarge, color = LightPrimaryText, fontWeight = FontWeight.Bold)
             GlassInput(
               value = username,
               onValueChange = { input ->
@@ -214,7 +225,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(18.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Bio (optional)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+            Text(text = "Bio (optional)", style = MaterialTheme.typography.labelLarge, color = LightPrimaryText, fontWeight = FontWeight.Bold)
             GlassInput(
               value = bio,
               onValueChange = { bio = it },
@@ -249,7 +260,7 @@ fun ProfileSetupScreen(
         2 -> {
           // Password Setup Step
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Set Password", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+            Text(text = "Set Password", style = MaterialTheme.typography.labelLarge, color = LightPrimaryText, fontWeight = FontWeight.Bold)
             GlassInput(
               value = password,
               onValueChange = { password = it },
@@ -268,7 +279,7 @@ fun ProfileSetupScreen(
           Spacer(modifier = Modifier.height(18.dp))
 
           Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Confirm Password", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+            Text(text = "Confirm Password", style = MaterialTheme.typography.labelLarge, color = LightPrimaryText, fontWeight = FontWeight.Bold)
             GlassInput(
               value = confirmPassword,
               onValueChange = { confirmPassword = it },
@@ -314,7 +325,7 @@ fun ProfileSetupScreen(
               text = "Check your email ${currentUser?.email} for a 6-digit code.",
               textAlign = TextAlign.Center,
               style = MaterialTheme.typography.bodyLarge,
-              color = MaterialTheme.colorScheme.onBackground
+              color = LightPrimaryText
             )
             
             Spacer(modifier = Modifier.height(24.dp))

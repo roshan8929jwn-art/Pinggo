@@ -443,10 +443,11 @@ class MainActivity : ComponentActivity() {
                 GlassToast(message = msg)
               }
             }
+            }
           }
         }
-      }
       }
     }
   }
 }
+

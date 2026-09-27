@@ -6,58 +6,20 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material3.Badge
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,40 +28,21 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.window.Dialog
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.CircularProgressIndicator
 import coil.compose.AsyncImage
 import com.example.R
-import com.example.model.Conversation
-import com.example.model.StatusUpdate
-import com.example.ui.components.PinggoBubbleIcon
-import com.example.ui.components.PinggoHeaderBrand
-import com.example.model.User
-import com.example.ui.components.GlassAvatar
-import com.example.ui.components.GlassBottomBar
-import com.example.ui.components.GlassCard
-import com.example.ui.components.GlassIconButton
-import com.example.ui.components.GlassSearchBar
-import com.example.ui.components.LiquidGlassBackground
-import com.example.ui.components.LiquidDropScreenTransition
-import com.example.ui.components.liquidDrop
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.ripple
-import androidx.compose.ui.text.style.TextAlign
+import com.example.model.*
+import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 import java.text.SimpleDateFormat
@@ -224,8 +167,8 @@ fun HomeNavItem(
     Text(
       text = label,
       style = MaterialTheme.typography.labelSmall,
-      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Bold,
-      color = if (isSelected) PinggoPinkPrimary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+      fontWeight = FontWeight.Bold,
+      color = if (isSelected) PinggoPinkPrimary else LightSecondaryText.copy(alpha = 0.8f)
     )
   }
 }
@@ -247,6 +190,13 @@ fun ChatsTab(
 
   var searchQuery by remember { mutableStateOf("") }
   var showMenu by remember { mutableStateOf(false) }
+  var selectedConv by remember { mutableStateOf<Conversation?>(null) }
+  var showMuteDurationPopup by remember { mutableStateOf(false) }
+  var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+  BackHandler(enabled = selectedConv != null) {
+    selectedConv = null
+  }
 
   val myUid = currentUser?.uid ?: ""
 
@@ -328,6 +278,7 @@ fun ChatsTab(
           size = 40.dp
         )
         Spacer(modifier = Modifier.width(8.dp))
+        // More Options
         Box {
           GlassIconButton(
             icon = Icons.Default.MoreVert,
@@ -335,37 +286,37 @@ fun ChatsTab(
             onClick = { showMenu = true },
             size = 40.dp
           )
-          DropdownMenu(
+          GlassDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
           ) {
             DropdownMenuItem(
-              text = { Text("New Group") },
-              leadingIcon = { Icon(Icons.Default.Group, null) },
+              text = { Text("New Group", color = LightPrimaryText) },
+              leadingIcon = { Icon(Icons.Default.Group, null, tint = LightPrimaryText) },
               onClick = {
                 showMenu = false
                 onOpenCreateGroup()
               }
             )
             DropdownMenuItem(
-              text = { Text("Search Users / Add Friends") },
-              leadingIcon = { Icon(Icons.Default.Search, null) },
+              text = { Text("Search Users", color = LightPrimaryText) },
+              leadingIcon = { Icon(Icons.Default.Search, null, tint = LightPrimaryText) },
               onClick = {
                 showMenu = false
                 onOpenSearch()
               }
             )
             DropdownMenuItem(
-              text = { Text("Notifications Inbox") },
-              leadingIcon = { Icon(Icons.Default.Notifications, null) },
+              text = { Text("Notifications", color = LightPrimaryText) },
+              leadingIcon = { Icon(Icons.Default.Notifications, null, tint = LightPrimaryText) },
               onClick = {
                 showMenu = false
                 onOpenNotifications()
               }
             )
             DropdownMenuItem(
-              text = { Text("Settings") },
-              leadingIcon = { Icon(Icons.Default.Settings, null) },
+              text = { Text("Settings", color = LightPrimaryText) },
+              leadingIcon = { Icon(Icons.Default.Settings, null, tint = LightPrimaryText) },
               onClick = {
                 showMenu = false
                 onOpenSettings("general")
@@ -373,6 +324,36 @@ fun ChatsTab(
             )
           }
         }
+      }
+    }
+
+    // Premium Glass Action Toolbar for Long-Press Selection
+    AnimatedVisibility(
+      visible = selectedConv != null,
+      modifier = Modifier.padding(top = 4.dp)
+    ) {
+      selectedConv?.let { conv ->
+        val isMuted = conv.mutedBy.contains(myUid)
+        val isPinned = conv.pinnedBy.contains(myUid)
+
+        GlassActionToolbar(
+          onClose = { selectedConv = null },
+          title = "1 selected",
+          actions = {
+            IconButton(onClick = { showMuteDurationPopup = true }) {
+              Icon(if (isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff, "Mute", tint = PinggoPinkPrimary)
+            }
+            IconButton(onClick = { showDeleteConfirmation = true }) {
+              Icon(Icons.Default.Delete, "Delete", tint = PinggoPinkPrimary)
+            }
+            IconButton(onClick = {
+              viewModel.togglePinConversation(conv.id, !isPinned)
+              selectedConv = null
+            }) {
+              Icon(Icons.Default.PushPin, "Pin", tint = if (isPinned) PinggoPinkPrimary else LightPrimaryText)
+            }
+          }
+        )
       }
     }
 
@@ -402,18 +383,18 @@ fun ChatsTab(
             .liquidDrop(interactionSource = pillInteraction, isPinkTint = !isActive, maxRadius = 32.dp)
             .clickable(
               interactionSource = pillInteraction,
-              indication = ripple(bounded = true, color = if (isActive) Color.White else PinggoPinkPrimary)
+              indication = ripple(bounded = true, color = PinggoPinkPrimary)
             ) { viewModel.setFilter(filter) },
           shape = RoundedCornerShape(20.dp),
-          color = if (isActive) PinggoPinkPrimary else Color.White.copy(alpha = 0.1f),
+          color = if (isActive) PinggoPinkPrimary.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.45f),
           border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (isActive) Color.White.copy(alpha = 0.5f) else Color.LightGray.copy(alpha = 0.2f)
+            0.5.dp,
+            if (isActive) PinggoPinkPrimary.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.7f)
           )
         ) {
           Text(
             text = filter,
-            color = if (isActive) Color.White else MaterialTheme.colorScheme.onBackground,
+            color = if (isActive) PinggoPinkPrimary else LightPrimaryText,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
@@ -443,13 +424,13 @@ fun ChatsTab(
             text = "No conversations yet",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = LightPrimaryText
           )
           Spacer(modifier = Modifier.height(6.dp))
           Text(
             text = "Tap search or '+' to find registered Pinggo friends!",
             fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            color = LightSecondaryText
           )
         }
       }
@@ -464,11 +445,24 @@ fun ChatsTab(
           val avatar = conv.getAvatarUrl(myUid)
           val unread = conv.unreadCounts[myUid] ?: 0
 
+          val isSelected = selectedConv?.id == conv.id
+          val isMuted = conv.mutedBy.contains(myUid)
+          val isPinned = conv.pinnedBy.contains(myUid)
+
           GlassCard(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(
+              if (isSelected) Modifier.border(1.dp, PinggoPinkPrimary.copy(alpha = 0.5f), RoundedCornerShape(22.dp)) else Modifier
+            ),
             onClick = {
-              viewModel.openConversation(conv)
-              onOpenChat(conv)
+              if (selectedConv != null) {
+                selectedConv = if (isSelected) null else conv
+              } else {
+                viewModel.openConversation(conv)
+                onOpenChat(conv)
+              }
+            },
+            onLongClick = {
+              selectedConv = conv
             }
           ) {
             Row(
@@ -477,12 +471,30 @@ fun ChatsTab(
                 .padding(12.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              GlassAvatar(
-                photoUrl = avatar,
-                name = title,
-                size = 52.dp,
-                isOnline = conv.type == "direct"
-              )
+              Box {
+                GlassAvatar(
+                  photoUrl = avatar,
+                  name = title,
+                  size = 52.dp,
+                  isOnline = conv.type == "direct"
+                )
+                if (isPinned) {
+                   Box(
+                     modifier = Modifier
+                       .align(Alignment.TopStart)
+                       .offset(x = (-2).dp, y = (-2).dp)
+                       .size(18.dp)
+                       .clip(CircleShape)
+                       .background(Color.White)
+                       .padding(2.dp)
+                       .clip(CircleShape)
+                       .background(PinggoPinkPrimary),
+                     contentAlignment = Alignment.Center
+                   ) {
+                     Icon(Icons.Default.PushPin, null, tint = Color.White, modifier = Modifier.size(10.dp))
+                   }
+                }
+              }
 
               Spacer(modifier = Modifier.width(14.dp))
 
@@ -492,18 +504,29 @@ fun ChatsTab(
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                  )
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                      text = title,
+                      style = MaterialTheme.typography.bodyLarge,
+                      fontWeight = FontWeight.Bold,
+                      color = LightPrimaryText,
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis
+                    )
+                    if (isMuted) {
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Icon(
+                        imageVector = Icons.Default.NotificationsOff,
+                        contentDescription = "Muted",
+                        tint = LightSecondaryText.copy(alpha = 0.5f),
+                        modifier = Modifier.size(14.dp)
+                      )
+                    }
+                  }
                   Text(
                     text = formatTimestamp(conv.lastMessageTimestamp),
                     fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    color = LightSecondaryText.copy(alpha = 0.7f)
                   )
                 }
 
@@ -517,7 +540,7 @@ fun ChatsTab(
                   Text(
                     text = conv.lastMessage.ifEmpty { "Start a conversation" },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                    color = LightSecondaryText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -563,9 +586,9 @@ fun ChatsTab(
         ) { onOpenSearch() }
         .testTag("add_username_button"),
       shape = RoundedCornerShape(26.dp),
-      color = Color.White,
-      border = androidx.compose.foundation.BorderStroke(1.2.dp, PinggoPinkPrimary),
-      shadowElevation = 10.dp
+      color = Color.White.copy(alpha = 0.5f),
+      border = androidx.compose.foundation.BorderStroke(0.5.dp, PinggoPinkPrimary.copy(alpha = 0.6f)),
+      shadowElevation = 6.dp
     ) {
       Row(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -587,7 +610,110 @@ fun ChatsTab(
       }
     }
   }
+
+  // Mute Duration Popup
+  if (showMuteDurationPopup) {
+    GlassDialog(onDismissRequest = { showMuteDurationPopup = false }) {
+      Column(modifier = Modifier.padding(24.dp)) {
+        Text(
+          text = "Mute notifications",
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.Bold,
+          color = LightPrimaryText
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+          text = "How long do you want to mute this chat?",
+          style = MaterialTheme.typography.bodyMedium,
+          color = LightSecondaryText
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+
+        val options = listOf(
+          "1 hour" to 1,
+          "2 hours" to 2,
+          "8 hours" to 8,
+          "Until I change it" to null
+        )
+
+        options.forEach { (label, hours) ->
+          val interaction = remember { MutableInteractionSource() }
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .clip(RoundedCornerShape(12.dp))
+              .clickable(interactionSource = interaction, indication = ripple(color = PinggoPinkPrimary)) {
+                selectedConv?.let { viewModel.muteConversation(it.id, hours) }
+                showMuteDurationPopup = false
+                selectedConv = null
+              }
+              .padding(vertical = 12.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(Icons.Default.AccessTime, null, tint = PinggoPinkPrimary, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text = label, color = LightPrimaryText, style = MaterialTheme.typography.bodyLarge)
+          }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+          TextButton(onClick = { showMuteDurationPopup = false }) {
+            Text("Cancel", color = LightSecondaryText)
+          }
+          Spacer(modifier = Modifier.width(8.dp))
+          GlassButton(
+            text = "Mute",
+            onClick = {
+              selectedConv?.let { viewModel.muteConversation(it.id, null) }
+              showMuteDurationPopup = false
+              selectedConv = null
+            },
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      }
+    }
+  }
+
+  // Delete Confirmation Popup
+  if (showDeleteConfirmation) {
+    GlassDialog(onDismissRequest = { showDeleteConfirmation = false }) {
+      Column(modifier = Modifier.padding(24.dp)) {
+        Text(
+          text = "Delete chat?",
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.Bold,
+          color = LightPrimaryText
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+          text = "Are you sure you want to delete this chat?",
+          style = MaterialTheme.typography.bodyMedium,
+          color = LightSecondaryText
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+          TextButton(onClick = { showDeleteConfirmation = false }) {
+            Text("Cancel", color = LightSecondaryText)
+          }
+          Spacer(modifier = Modifier.width(12.dp))
+          GlassButton(
+            text = "Delete",
+            onClick = {
+              selectedConv?.let { viewModel.deleteConversation(it.id) }
+              showDeleteConfirmation = false
+              selectedConv = null
+            },
+            modifier = Modifier.widthIn(min = 100.dp)
+          )
+        }
+      }
+    }
+  }
 }
+
 
 @Composable
 fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
@@ -612,7 +738,7 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
         text = "Calls",
         style = MaterialTheme.typography.headlineLarge,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground
+        color = LightPrimaryText
       )
     }
 
@@ -949,7 +1075,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                   text = myUpdate.text,
                   fontSize = 14.sp,
                   fontWeight = FontWeight.Medium,
-                  color = Color.White,
+                  color = LightPrimaryText,
                   maxLines = 2,
                   overflow = TextOverflow.Ellipsis
                 )
@@ -999,7 +1125,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                     text = "${myUpdate.viewers.size}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = LightPrimaryText
                   )
                 }
               }
@@ -1062,7 +1188,7 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
                   text = update.userName,
                   fontSize = 15.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = Color.White
+                  color = LightPrimaryText
                 )
                 Text(
                   text = update.text,
@@ -1137,7 +1263,7 @@ fun StatusDetailDialog(
               text = status.userName,
               fontSize = 16.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = LightPrimaryText
             )
             Text(
               text = formatTimestamp(status.timestamp),
@@ -1146,7 +1272,7 @@ fun StatusDetailDialog(
             )
           }
           IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = LightPrimaryText)
           }
         }
 
@@ -1168,7 +1294,7 @@ fun StatusDetailDialog(
         Text(
           text = status.text,
           fontSize = 15.sp,
-          color = Color.White,
+          color = LightPrimaryText,
           lineHeight = 22.sp
         )
 
@@ -1226,7 +1352,7 @@ fun StatusViewersDialog(
             )
           }
           IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = LightPrimaryText)
           }
         }
 
@@ -1281,7 +1407,7 @@ fun StatusViewersDialog(
                     text = viewer.displayName.ifEmpty { viewer.username },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = LightPrimaryText
                   )
                   Text(
                     text = "@${viewer.username}",
@@ -1844,6 +1970,138 @@ fun EditProfileDialog(
   }
 }
 
+@Composable
+fun ChatActionToolbar(
+  selectedConv: Conversation?,
+  onMute: () -> Unit,
+  onDelete: () -> Unit,
+  onPin: () -> Unit,
+  onClose: () -> Unit
+) {
+  val myUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+  val isPinned = selectedConv?.pinnedBy?.contains(myUid) == true
+  val isMuted = selectedConv?.mutedBy?.contains(myUid) == true
+  
+  GlassActionToolbar(
+    onClose = onClose,
+    title = "1 selected",
+    actions = {
+      IconButton(onClick = onMute) {
+        Icon(if (isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff, "Mute", tint = PinggoPinkPrimary)
+      }
+      IconButton(onClick = onDelete) {
+        Icon(Icons.Default.Delete, "Delete", tint = PinggoPinkPrimary)
+      }
+      IconButton(onClick = onPin) {
+        Icon(Icons.Default.PushPin, "Pin", tint = if (isPinned) PinggoPinkPrimary else LightPrimaryText)
+      }
+    }
+  )
+}
+
+@Composable
+fun MuteDurationPopup(
+  onDismiss: () -> Unit,
+  onMute: (Int?) -> Unit
+) {
+  GlassDialog(onDismissRequest = onDismiss) {
+    Column(modifier = Modifier.padding(24.dp)) {
+      Text(
+        text = "Mute notifications",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = LightPrimaryText
+      )
+      Spacer(modifier = Modifier.height(8.dp))
+      Text(
+        text = "How long do you want to mute this chat?",
+        style = MaterialTheme.typography.bodyMedium,
+        color = LightSecondaryText,
+        textAlign = TextAlign.Center
+      )
+      
+      Spacer(modifier = Modifier.height(20.dp))
+      
+      val options = listOf(
+        "1 hour" to 1,
+        "2 hours" to 2,
+        "8 hours" to 8,
+        "Until I change it" to null
+      )
+      
+      options.forEach { (label, value) ->
+        val interaction = remember { MutableInteractionSource() }
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(interactionSource = interaction, indication = ripple(color = PinggoPinkPrimary)) {
+              onMute(value)
+            }
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(Icons.Default.AccessTime, null, tint = PinggoPinkPrimary, modifier = Modifier.size(20.dp))
+          Spacer(modifier = Modifier.width(12.dp))
+          Text(text = label, color = LightPrimaryText, style = MaterialTheme.typography.bodyLarge)
+        }
+      }
+      
+      Spacer(modifier = Modifier.height(16.dp))
+      
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        TextButton(onClick = onDismiss) {
+          Text("Cancel", color = LightSecondaryText)
+        }
+      }
+    }
+  }
+}
+
+@Composable
+fun DeleteChatConfirmationPopup(
+  onDismiss: () -> Unit,
+  onDelete: () -> Unit
+) {
+  GlassDialog(onDismissRequest = onDismiss) {
+    Column(
+      modifier = Modifier.padding(24.dp),
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+      Text(
+        text = "Delete chat?",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = LightPrimaryText
+      )
+      Spacer(modifier = Modifier.height(12.dp))
+      Text(
+        text = "Are you sure you want to delete this chat?",
+        style = MaterialTheme.typography.bodyMedium,
+        color = LightSecondaryText,
+        textAlign = TextAlign.Center
+      )
+      
+      Spacer(modifier = Modifier.height(24.dp))
+      
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+      ) {
+        TextButton(onClick = onDismiss) {
+          Text("Cancel", color = LightSecondaryText)
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        GlassButton(
+          text = "Delete",
+          onClick = onDelete,
+          modifier = Modifier.widthIn(min = 100.dp)
+        )
+      }
+    }
+  }
+}
+
 private fun formatTimestamp(millis: Long): String {
   if (millis <= 0) return ""
   val now = System.currentTimeMillis()
@@ -1855,3 +2113,4 @@ private fun formatTimestamp(millis: Long): String {
     else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(millis))
   }
 }
+

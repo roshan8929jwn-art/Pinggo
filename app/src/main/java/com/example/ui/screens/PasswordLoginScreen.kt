@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
@@ -25,6 +27,8 @@ import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassCard
 import com.example.ui.components.GlassInput
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.liquidDrop
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.theme.PinggoPinkPrimary
 import com.example.viewmodel.PinggoViewModel
@@ -60,7 +64,14 @@ fun PasswordLoginScreen(
                     .padding(top = 10.dp, bottom = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                val backInteraction = remember { MutableInteractionSource() }
+                IconButton(
+                    onClick = onBack,
+                    interactionSource = backInteraction,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .liquidDrop(interactionSource = backInteraction, isPinkTint = true, maxRadius = 22.dp)
+                ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground)
                 }
                 Spacer(modifier = Modifier.width(6.dp))
@@ -137,18 +148,26 @@ fun PasswordLoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.CenterEnd
                     ) {
+                        val forgotInteraction = remember { MutableInteractionSource() }
                         Text(
                             text = "Forgot Password?",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = PinggoPinkPrimary,
-                            modifier = Modifier.clickable {
-                                if (identifier.isBlank()) {
-                                    viewModel.showToast("Please enter your email to reset password")
-                                } else {
-                                    viewModel.sendPasswordResetEmail(identifier) { _, _ -> }
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .liquidDrop(interactionSource = forgotInteraction, isPinkTint = true, maxRadius = 24.dp)
+                                .clickable(
+                                    interactionSource = forgotInteraction,
+                                    indication = ripple(bounded = true, color = PinggoPinkPrimary)
+                                ) {
+                                    if (identifier.isBlank()) {
+                                        viewModel.showToast("Please enter your email to reset password")
+                                    } else {
+                                        viewModel.sendPasswordResetEmail(identifier) { _, _ -> }
+                                    }
                                 }
-                            }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
 

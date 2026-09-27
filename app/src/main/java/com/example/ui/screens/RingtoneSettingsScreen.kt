@@ -120,7 +120,7 @@ fun RingtoneSettingsScreen(
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
-            tint = Color.White
+            tint = LightPrimaryText
           )
         }
         Spacer(modifier = Modifier.width(6.dp))
@@ -130,7 +130,7 @@ fun RingtoneSettingsScreen(
           text = if (isCallRingtone) "Call Ringtone" else "Notification Ringtone",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color.White
+          color = LightPrimaryText
         )
       }
 
@@ -166,13 +166,13 @@ fun RingtoneSettingsScreen(
               text = if (isCallRingtone) "Active Call Ringtone" else "Active Notification Sound",
               fontSize = 12.sp,
               fontWeight = FontWeight.Medium,
-              color = PinggoMintUltraLight
+              color = LightSecondaryText
             )
             Text(
               text = selectedTitle,
               fontSize = 16.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = LightPrimaryText
             )
           }
 
@@ -210,7 +210,7 @@ fun RingtoneSettingsScreen(
           text = if (isCallRingtone) "System Ringtones (${availableRingtones.size})" else "Notification Sounds (${availableRingtones.size})",
           fontSize = 14.sp,
           fontWeight = FontWeight.SemiBold,
-          color = Color(0xCCFFFFFF)
+          color = LightSecondaryText
         )
 
         if (!isCallRingtone) {
@@ -280,13 +280,13 @@ fun RingtoneSettingsScreen(
                   text = item.title,
                   fontSize = 15.sp,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isSelected) Color.White else Color(0xEEFFFFFF)
+                  color = if (isSelected) LightPrimaryText else LightSecondaryText
                 )
                 if (item.isDefault) {
                   Text(
                     text = "System Default",
                     fontSize = 11.sp,
-                    color = PinggoMintUltraLight
+                    color = LightSecondaryText
                   )
                 }
               }

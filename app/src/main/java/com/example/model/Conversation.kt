@@ -41,7 +41,9 @@ data class Conversation(
   val adminUids: List<String> = emptyList(),
   val pinnedBy: List<String> = emptyList(),
   val mutedBy: List<String> = emptyList(),
+  val mutedUntil: Map<String, Long> = emptyMap(),
   val archivedBy: List<String> = emptyList(),
+  val deletedBy: List<String> = emptyList(),
   val createdAt: Long = System.currentTimeMillis(),
   val updatedAt: Long = System.currentTimeMillis()
 ) {

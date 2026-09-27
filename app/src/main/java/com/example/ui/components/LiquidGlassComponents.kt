@@ -1,30 +1,28 @@
 package com.example.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -40,130 +38,107 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.Canvas
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
 
 /**
- * Dynamic Liquid Glass Background with realistic luminous gradient orbs and glass reflections.
- * ENSURED: Correct contrast background for text visibility.
+ * Dynamic Liquid Glass Background - RECREATED OCEAN SUNSET GRADIENT.
+ * Matches Reference Image 2: Lavender (top) -> Peach/Pink (middle) -> Muted Blue (bottom).
  */
 @Composable
 fun LiquidGlassBackground(
   modifier: Modifier = Modifier,
-  isDark: Boolean = isSystemInDarkTheme(),
   content: @Composable BoxScope.() -> Unit
 ) {
-  val design = LocalGlassDesign.current
-  val infiniteTransition = rememberInfiniteTransition(label = "liquid_glass_orbs")
-  val orb1Offset by infiniteTransition.animateFloat(
-    initialValue = -30f,
-    targetValue = 40f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(durationMillis = 7000, easing = FastOutSlowInEasing),
-      repeatMode = RepeatMode.Reverse
-    ),
-    label = "orb1"
+  val backgroundBrush = Brush.verticalGradient(
+    colors = listOf(
+      Color(0xFFDCDDF1), // Soft Lavender Top
+      Color(0xFFF7E2D5), // Soft Peach Middle-Top
+      Color(0xFFF9D8DA), // Warm Pink Middle
+      Color(0xFFE2EAF1), // Light Blue Middle-Bottom
+      Color(0xFFC7D9E8)  // Muted Blue Bottom
+    )
   )
-  val orb2Offset by infiniteTransition.animateFloat(
-    initialValue = 20f,
-    targetValue = -50f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(durationMillis = 9000, easing = FastOutSlowInEasing),
-      repeatMode = RepeatMode.Reverse
-    ),
-    label = "orb2"
-  )
-
-  val bgColor = if (isDark) DarkBackground else PinggoWhite
-  val orbColor1 = when (design) {
-    GlassDesign.PINK -> Color(0x30FF69B4)
-    GlassDesign.CRYSTAL -> Color(0x154285F4)
-    else -> if (isDark) Color(0x20FF69B4) else Color(0x15FF69B4)
-  }
-  val orbColor2 = if (isDark) Color(0x104285F4) else Color(0x084285F4)
 
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(bgColor)
-      .drawBehind {
-        val width = size.width
-        val height = size.height
-
-        // Orb 1: Volumetric glowing orb top-right (Pink Tint)
-        drawCircle(
-          brush = Brush.radialGradient(
-            colors = listOf(orbColor1, orbColor1.copy(alpha = 0.05f), Color.Transparent),
-            center = Offset(width * 0.85f + orb1Offset * 2, height * 0.15f + orb2Offset),
-            radius = width * 0.8f
-          )
-        )
-        
-        // Orb 2: Refraction sphere middle-left (Soft Blue/Pink)
-        drawCircle(
-          brush = Brush.radialGradient(
-            colors = listOf(orbColor2, Color.Transparent),
-            center = Offset(width * 0.1f + orb2Offset, height * 0.45f + orb1Offset),
-            radius = width * 0.6f
-          )
-        )
-
-        // Orb 3: Subtle glow bottom-right
-        drawCircle(
-          brush = Brush.radialGradient(
-            colors = listOf(orbColor1.copy(alpha = 0.1f), Color.Transparent),
-            center = Offset(width * 0.7f - orb2Offset, height * 0.9f - orb1Offset),
-            radius = width * 0.5f
-          )
-        )
-      }
+      .background(backgroundBrush)
   ) {
+    // Subtle animated refraction orbs to simulate "Liquid" feel
+    val infiniteTransition = rememberInfiniteTransition(label = "refraction")
+    val orbOffset by infiniteTransition.animateFloat(
+      initialValue = 0f,
+      targetValue = 100f,
+      animationSpec = infiniteRepeatable(
+        animation = tween(10000, easing = LinearEasing),
+        repeatMode = RepeatMode.Reverse
+      ),
+      label = "orb"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+      drawCircle(
+        brush = Brush.radialGradient(
+          colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent),
+          center = Offset(size.width * 0.8f, size.height * 0.2f + orbOffset),
+          radius = size.width * 0.5f
+        )
+      )
+      drawCircle(
+        brush = Brush.radialGradient(
+          colors = listOf(Color.White.copy(alpha = 0.1f), Color.Transparent),
+          center = Offset(size.width * 0.2f, size.height * 0.8f - orbOffset),
+          radius = size.width * 0.4f
+        )
+      )
+    }
+
     content()
   }
 }
 
 /**
- * Reusable GlassContainer with translucent frosted glass surface.
- * FIX: Improved surface opacity for text readability.
+ * Reusable GlassContainer with crystal-clear frosted glass surface.
+ * PREMIUM: Highly transparent white with delicate edge refraction.
  */
 @Composable
 fun GlassContainer(
   modifier: Modifier = Modifier,
   shape: Shape = RoundedCornerShape(28.dp),
-  isDark: Boolean = isSystemInDarkTheme(),
-  elevation: Dp = 10.dp,
+  elevation: Dp = 4.dp,
   animateModalReveal: Boolean = true,
   content: @Composable BoxScope.() -> Unit
 ) {
-  val design = LocalGlassDesign.current
-  val surfaceColor = when (design) {
-    GlassDesign.PINK -> PinggoPinkLight.copy(alpha = 0.15f)
-    GlassDesign.CRYSTAL -> if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.12f)
-    else -> if (isDark) Color(0xFF1E1E1E).copy(alpha = 0.7f) else Color.White.copy(alpha = 0.6f)
-  }
-  val borderColor = if (isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.8f)
+  val surfaceColor = Color.White.copy(alpha = 0.45f) 
+  val borderColor = Color.White.copy(alpha = 0.7f)
   val modalModifier = if (animateModalReveal) Modifier.liquidDropModalReveal(isPinkTint = true) else Modifier
 
   Box(
     modifier = modifier
-      .shadow(elevation = elevation, shape = shape)
+      .shadow(
+        elevation = elevation, 
+        shape = shape, 
+        ambientColor = Color.Black.copy(alpha = 0.05f), 
+        spotColor = Color.Black.copy(alpha = 0.05f)
+      )
       .clip(shape)
       .background(surfaceColor)
       .then(modalModifier)
       .drawBehind {
-        // Subtle top-left highlight
+        // Soft inner white highlight for crystal look (Top-Left Glint)
         drawRect(
           brush = Brush.linearGradient(
-            colors = listOf(Color.White.copy(alpha = 0.2f), Color.Transparent),
+            colors = listOf(Color.White.copy(alpha = 0.25f), Color.Transparent),
             start = Offset(0f, 0f),
             end = Offset(size.width * 0.3f, size.height * 0.3f)
           )
         )
       }
-      .border(1.dp, borderColor, shape)
+      .border(0.5.dp, borderColor, shape)
   ) {
     content()
   }
@@ -171,31 +146,30 @@ fun GlassContainer(
 
 /**
  * Reusable GlassCard for lists and interactive cards.
- * FIX: Higher opacity and theme-aware colors for maximum text contrast.
+ * PREMIUM: Ultra-thin borders and realistic highlights.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GlassCard(
   modifier: Modifier = Modifier,
   shape: Shape = RoundedCornerShape(22.dp),
-  isDark: Boolean = isSystemInDarkTheme(),
   onClick: (() -> Unit)? = null,
+  onLongClick: (() -> Unit)? = null,
   content: @Composable BoxScope.() -> Unit
 ) {
-  val design = LocalGlassDesign.current
-  val surfaceColor = when (design) {
-    GlassDesign.PINK -> PinggoPinkLight.copy(alpha = 0.12f)
-    GlassDesign.CRYSTAL -> if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.12f)
-    else -> if (isDark) DarkSurface.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.5f)
-  }
+  val surfaceColor = Color.White.copy(alpha = 0.4f)
+  val borderColor = Color.White.copy(alpha = 0.7f)
   
   val interactionSource = remember { MutableInteractionSource() }
-  val clickableModifier = if (onClick != null) {
+  val gestureModifier = if (onClick != null || onLongClick != null) {
     Modifier
       .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = 48.dp)
-      .clickable(
+      .combinedClickable(
         interactionSource = interactionSource,
-        indication = ripple(bounded = true, color = PinggoPinkPrimary)
-      ) { onClick() }
+        indication = ripple(bounded = true, color = PinggoPinkPrimary),
+        onClick = { onClick?.invoke() },
+        onLongClick = { onLongClick?.invoke() }
+      )
   } else Modifier
 
   Box(
@@ -203,17 +177,17 @@ fun GlassCard(
       .clip(shape)
       .background(surfaceColor)
       .drawBehind {
-        // Realistic glass highlight
+        // Realistic crystal glass highlight glint
         drawRect(
           brush = Brush.linearGradient(
-            colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent),
+            colors = listOf(Color.White.copy(alpha = 0.2f), Color.Transparent, Color.White.copy(alpha = 0.1f)),
             start = Offset(0f, 0f),
             end = Offset(size.width, size.height)
           )
         )
       }
-      .border(0.5.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.9f), shape)
-      .then(clickableModifier)
+      .border(0.5.dp, borderColor, shape)
+      .then(gestureModifier)
   ) {
     content()
   }
@@ -221,7 +195,7 @@ fun GlassCard(
 
 /**
  * Reusable GlassButton.
- * FIX: High contrast text colors for primary and secondary variants.
+ * REDESIGN: Vibrant branding for primary, Crystal Glass for secondary.
  */
 @Composable
 fun GlassButton(
@@ -233,7 +207,6 @@ fun GlassButton(
   isLoading: Boolean = false,
   enabled: Boolean = true,
   shape: Shape = RoundedCornerShape(28.dp),
-  isDark: Boolean = isSystemInDarkTheme(),
   testTag: String = "glass_button"
 ) {
   val backgroundBrush = if (isPrimary) {
@@ -241,15 +214,14 @@ fun GlassButton(
   } else {
     Brush.verticalGradient(
       listOf(
-        if (isDark) Color(0xFF3A3A3C).copy(alpha = 0.8f) else Color.White.copy(alpha = 0.4f),
-        if (isDark) Color(0xFF2C2C2E).copy(alpha = 0.8f) else PinggoOffWhite.copy(alpha = 0.4f)
+        Color.White.copy(alpha = 0.6f),
+        Color.White.copy(alpha = 0.3f)
       )
     )
   }
 
-  // Primary: White text always works on pink. Secondary: uses semantic primary text color.
-  val contentColor = if (isPrimary) Color.White else MaterialTheme.colorScheme.onBackground
-  val borderColor = if (isPrimary) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+  val contentColor = if (isPrimary) Color.White else LightPrimaryText
+  val borderColor = if (isPrimary) Color.Transparent else Color.White.copy(alpha = 0.8f)
 
   val interactionSource = remember { MutableInteractionSource() }
 
@@ -266,8 +238,8 @@ fun GlassButton(
       ) { onClick() },
     shape = shape,
     color = Color.Transparent,
-    border = BorderStroke(1.5.dp, borderColor),
-    shadowElevation = if (isPrimary) 6.dp else 0.dp
+    border = BorderStroke(0.5.dp, borderColor),
+    shadowElevation = if (isPrimary) 6.dp else 2.dp
   ) {
     Box(
       modifier = Modifier
@@ -316,13 +288,12 @@ fun GlassIconButton(
   contentDescription: String?,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
-  isDark: Boolean = isSystemInDarkTheme(),
   tint: Color? = null,
   size: Dp = 44.dp,
   testTag: String = "glass_icon_button"
 ) {
-  val iconTint = tint ?: MaterialTheme.colorScheme.onSurface
-  val surfaceColor = if(isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+  val iconTint = tint ?: LightPrimaryText
+  val surfaceColor = Color.White.copy(alpha = 0.5f)
   val interactionSource = remember { MutableInteractionSource() }
 
   Box(
@@ -330,7 +301,7 @@ fun GlassIconButton(
       .size(size)
       .clip(CircleShape)
       .background(surfaceColor)
-      .border(BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.4f)), CircleShape)
+      .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.8f)), CircleShape)
       .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = (size / 2) + 6.dp)
       .clickable(
         interactionSource = interactionSource,
@@ -350,7 +321,7 @@ fun GlassIconButton(
 
 /**
  * Reusable GlassSearchBar.
- * FIX: High contrast text and search icon.
+ * PREMIUM: Crystal Glass look on blurred background.
  */
 @Composable
 fun GlassSearchBar(
@@ -358,12 +329,11 @@ fun GlassSearchBar(
   onQueryChange: (String) -> Unit,
   modifier: Modifier = Modifier,
   placeholder: String = "Search...",
-  isDark: Boolean = isSystemInDarkTheme(),
   onClear: () -> Unit = { onQueryChange("") }
 ) {
-  val surfaceColor = if(isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.5f)
-  val textColor = MaterialTheme.colorScheme.onBackground
-  val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+  val surfaceColor = Color.White.copy(alpha = 0.45f)
+  val textColor = LightPrimaryText
+  val placeholderColor = LightSecondaryText.copy(alpha = 0.6f)
 
   Box(
     modifier = modifier
@@ -371,7 +341,7 @@ fun GlassSearchBar(
       .height(52.dp)
       .clip(RoundedCornerShape(26.dp))
       .background(surfaceColor)
-      .border(BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.9f)), RoundedCornerShape(26.dp))
+      .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.8f)), RoundedCornerShape(26.dp))
       .padding(horizontal = 16.dp),
     contentAlignment = Alignment.CenterStart
   ) {
@@ -410,7 +380,6 @@ fun GlassSearchBar(
 
 /**
  * Reusable GlassInput.
- * FIX: Higher contrast for input text and placeholders.
  */
 @Composable
 fun GlassInput(
@@ -420,7 +389,6 @@ fun GlassInput(
   placeholder: String = "",
   leadingIcon: ImageVector? = null,
   trailingIcon: (@Composable () -> Unit)? = null,
-  isDark: Boolean = isSystemInDarkTheme(),
   keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
   keyboardActions: KeyboardActions = KeyboardActions.Default,
   singleLine: Boolean = true,
@@ -429,16 +397,16 @@ fun GlassInput(
   textAlign: TextAlign = TextAlign.Start,
   testTag: String = "glass_input"
 ) {
-  val surfaceColor = if(isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.4f)
-  val textColor = MaterialTheme.colorScheme.onBackground
-  val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+  val surfaceColor = Color.White.copy(alpha = 0.4f)
+  val textColor = LightPrimaryText
+  val placeholderColor = LightSecondaryText.copy(alpha = 0.6f)
 
   Box(
     modifier = modifier
       .fillMaxWidth()
       .clip(RoundedCornerShape(18.dp))
       .background(surfaceColor)
-      .border(1.dp, if(isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.9f), RoundedCornerShape(18.dp))
+      .border(0.5.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(18.dp))
       .padding(horizontal = 16.dp, vertical = 14.dp),
     contentAlignment = Alignment.CenterStart
   ) {
@@ -497,13 +465,12 @@ fun GlassAvatar(
   size: Dp = 52.dp,
   isOnline: Boolean = false,
   hasStatusUpdate: Boolean = false,
-  isDark: Boolean = isSystemInDarkTheme(),
   onClick: (() -> Unit)? = null
 ) {
   val borderBrush = if (hasStatusUpdate) {
     Brush.sweepGradient(listOf(PinggoPinkPrimary, PinggoPinkLight, PinggoPinkPrimary))
   } else {
-    Brush.verticalGradient(listOf(Color.LightGray.copy(alpha = 0.4f), Color.Transparent))
+    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.Transparent))
   }
 
   val avatarInteraction = remember { MutableInteractionSource() }
@@ -522,7 +489,7 @@ fun GlassAvatar(
         .fillMaxSize()
         .clip(CircleShape)
         .border(width = if (hasStatusUpdate) 2.5.dp else 1.dp, brush = borderBrush, shape = CircleShape)
-        .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE2E8F0)),
+        .background(Color.White.copy(alpha = 0.3f)),
       contentAlignment = Alignment.Center
     ) {
       if (!photoUrl.isNullOrEmpty()) {
@@ -557,7 +524,7 @@ fun GlassAvatar(
           .align(Alignment.BottomEnd)
           .offset(x = 1.dp, y = 1.dp)
           .clip(CircleShape)
-          .background(if (isDark) DarkBackground else Color.White)
+          .background(Color.White)
           .padding(2.dp)
           .clip(CircleShape)
           .background(OnlinePink)
@@ -568,7 +535,6 @@ fun GlassAvatar(
 
 /**
  * Reusable GlassChatBubble.
- * FIX: Robust color logic for text in bubbles.
  */
 @Composable
 fun GlassChatBubble(
@@ -578,7 +544,6 @@ fun GlassChatBubble(
   modifier: Modifier = Modifier,
   delivered: Boolean = true,
   read: Boolean = false,
-  isDark: Boolean = isSystemInDarkTheme(),
   replySnippet: String? = null,
   replySender: String? = null
 ) {
@@ -593,23 +558,22 @@ fun GlassChatBubble(
   } else {
     Brush.verticalGradient(
       listOf(
-        if (isDark) Color(0xFF2C2C2E).copy(alpha = 0.85f) else Color.White.copy(alpha = 0.65f),
-        if (isDark) Color(0xFF1C1C1E).copy(alpha = 0.85f) else PinggoOffWhite.copy(alpha = 0.65f)
+        Color.White.copy(alpha = 0.55f),
+        Color.White.copy(alpha = 0.35f)
       )
     )
   }
 
-  // Sent messages always white text on pink. Received messages adaptive.
-  val textColor = if (isSent) Color.White else MaterialTheme.colorScheme.onBackground
-  val timeColor = if (isSent) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
-  val borderColor = if (isSent) Color.Transparent else if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.3f)
+  val textColor = if (isSent) Color.White else LightPrimaryText
+  val timeColor = if (isSent) Color.White.copy(alpha = 0.75f) else LightSecondaryText
+  val borderColor = if (isSent) Color.Transparent else Color.White.copy(alpha = 0.6f)
 
   Column(
     modifier = modifier
       .shadow(elevation = 2.dp, shape = bubbleShape)
       .clip(bubbleShape)
       .background(backgroundBrush)
-      .border(BorderStroke(1.dp, borderColor), bubbleShape)
+      .border(BorderStroke(0.5.dp, borderColor), bubbleShape)
       .padding(horizontal = 14.dp, vertical = 10.dp)
   ) {
     if (!replySnippet.isNullOrEmpty()) {
@@ -672,10 +636,9 @@ fun GlassChatBubble(
 @Composable
 fun GlassBottomBar(
   modifier: Modifier = Modifier,
-  isDark: Boolean = isSystemInDarkTheme(),
   content: @Composable RowScope.() -> Unit
 ) {
-  val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+  val surfaceColor = Color.White.copy(alpha = 0.65f)
 
   Box(
     modifier = modifier
@@ -686,8 +649,8 @@ fun GlassBottomBar(
     Surface(
       shape = RoundedCornerShape(36.dp),
       color = surfaceColor,
-      border = BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.4f)),
-      shadowElevation = 15.dp,
+      border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.8f)),
+      shadowElevation = 8.dp,
       modifier = Modifier.fillMaxWidth()
     ) {
       Row(
@@ -703,23 +666,129 @@ fun GlassBottomBar(
 }
 
 /**
+ * Reusable GlassDropdownMenu.
+ */
+@Composable
+fun GlassDropdownMenu(
+  expanded: Boolean,
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
+  offset: DpOffset = DpOffset(0.dp, 0.dp),
+  content: @Composable ColumnScope.() -> Unit
+) {
+  MaterialTheme(
+    colorScheme = MaterialTheme.colorScheme.copy(
+      surface = Color.Transparent,
+      onSurface = LightPrimaryText
+    )
+  ) {
+    DropdownMenu(
+      expanded = expanded,
+      onDismissRequest = onDismissRequest,
+      modifier = modifier
+        .widthIn(min = 200.dp)
+        .padding(horizontal = 8.dp),
+      offset = offset,
+      scrollState = rememberScrollState()
+    ) {
+      GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp)
+      ) {
+        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+          content()
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Reusable GlassDialog.
+ */
+@Composable
+fun GlassDialog(
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
+  content: @Composable BoxScope.() -> Unit
+) {
+  Dialog(onDismissRequest = onDismissRequest) {
+    GlassContainer(
+      modifier = modifier
+        .fillMaxWidth(0.9f)
+        .wrapContentHeight(),
+      shape = RoundedCornerShape(32.dp),
+      elevation = 16.dp,
+      animateModalReveal = true,
+      content = content
+    )
+  }
+}
+
+/**
+ * Premium Glass Action Toolbar.
+ */
+@Composable
+fun GlassActionToolbar(
+  modifier: Modifier = Modifier,
+  onClose: () -> Unit,
+  title: String = "1 selected",
+  actions: @Composable RowScope.() -> Unit
+) {
+  Surface(
+    modifier = modifier
+      .fillMaxWidth()
+      .padding(horizontal = 14.dp, vertical = 8.dp),
+    shape = RoundedCornerShape(32.dp),
+    color = Color.White.copy(alpha = 0.7f),
+    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.9f)),
+    shadowElevation = 10.dp
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 12.dp, vertical = 8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onClose) {
+          Icon(Icons.Default.Close, "Cancel Selection", tint = LightPrimaryText)
+        }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+          text = title,
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.Bold,
+          color = LightPrimaryText
+        )
+      }
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End,
+        content = actions
+      )
+    }
+  }
+}
+
+/**
  * Reusable GlassToast.
  */
 @Composable
 fun GlassToast(
   message: String,
   modifier: Modifier = Modifier,
-  isError: Boolean = false,
-  isDark: Boolean = isSystemInDarkTheme()
+  isError: Boolean = false
 ) {
-  val surfaceColor = if (isError) Color(0xFFB91C1C) else if (isDark) Color(0xFF2C2C2E) else Color(0xFFF8F8FA)
+  val surfaceColor = if (isError) Color(0xFFB91C1C).copy(alpha = 0.8f) else Color.White.copy(alpha = 0.75f)
   val borderColor = if (isError) Color.Red else PinggoPinkPrimary
-  val textColor = if (isError || isDark) Color.White else LightPrimaryText
+  val textColor = if (isError) Color.White else LightPrimaryText
 
   Surface(
     shape = RoundedCornerShape(26.dp),
     color = surfaceColor,
-    border = BorderStroke(2.dp, borderColor),
+    border = BorderStroke(1.dp, borderColor),
     shadowElevation = 12.dp,
     modifier = modifier.padding(16.dp)
   ) {

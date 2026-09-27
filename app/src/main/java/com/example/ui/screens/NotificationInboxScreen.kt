@@ -54,7 +54,7 @@ fun NotificationInboxScreen(
                         text = "Notifications",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = LightPrimaryText
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     if (notifications.isNotEmpty()) {
@@ -83,12 +83,12 @@ fun NotificationInboxScreen(
                             Text(
                                 text = "Inbox Empty",
                                 style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                                color = LightPrimaryText
                             )
                             Text(
                                 text = "You'll see requests and alerts here",
                                 fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                color = LightSecondaryText
                             )
                         }
                     }
@@ -163,7 +163,7 @@ fun FriendRequestItem(
                     text = request.senderName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = LightPrimaryText
                 )
                 Text(
                     text = "@${request.senderUsername}",
@@ -196,7 +196,7 @@ fun FriendRequestItem(
                             .liquidDrop(interactionSource = declineInteraction, isPinkTint = true, maxRadius = 24.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                     ) {
-                        Text("Decline", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), fontSize = 13.sp)
+                        Text("Decline", color = LightSecondaryText, fontSize = 13.sp)
                     }
                 }
             }
@@ -255,14 +255,14 @@ fun NotificationItem(
                 Text(
                     text = notification.content,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                    color = LightPrimaryText.copy(alpha = alpha),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = formatNotificationTimestamp(notification.timestamp),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    color = LightSecondaryText.copy(alpha = 0.6f)
                 )
             }
             

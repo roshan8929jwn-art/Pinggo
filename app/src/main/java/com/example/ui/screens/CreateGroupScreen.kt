@@ -82,7 +82,7 @@ fun CreateGroupScreen(
         verticalAlignment = Alignment.CenterVertically
       ) {
         IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = LightPrimaryText)
         }
         Spacer(modifier = Modifier.width(6.dp))
         PinggoBubbleIcon(size = 30.dp)
@@ -91,7 +91,7 @@ fun CreateGroupScreen(
           text = "New Group",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color.White
+          color = LightPrimaryText
         )
       }
 
@@ -122,7 +122,7 @@ fun CreateGroupScreen(
           text = "Selected Members (${selectedMembers.size})",
           fontSize = 13.sp,
           fontWeight = FontWeight.SemiBold,
-          color = Color(0xCCFFFFFF)
+          color = LightSecondaryText
         )
         Spacer(modifier = Modifier.height(6.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -196,7 +196,7 @@ fun CreateGroupScreen(
                   text = user.displayName.ifEmpty { user.username },
                   fontSize = 15.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = Color.White
+                  color = LightPrimaryText
                 )
                 Text(
                   text = user.handle,

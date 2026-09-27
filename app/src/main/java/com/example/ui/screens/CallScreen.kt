@@ -96,13 +96,13 @@ fun CallScreen(
           text = targetName.ifEmpty { "Pinggo Contact" },
           fontSize = 28.sp,
           fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onBackground
+          color = LightPrimaryText
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
           text = if (isIncoming) "Incoming ${call.type} call..." else if (call.status == "ringing") "Ringing..." else String.format("%02d:%02d", durationSec / 60, durationSec % 60),
           fontSize = 16.sp,
-          color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+          color = LightSecondaryText,
           fontWeight = FontWeight.Medium
         )
       }
@@ -242,7 +242,7 @@ fun CallActionButton(
     Spacer(modifier = Modifier.height(6.dp))
     Text(
       text = label,
-      color = MaterialTheme.colorScheme.onBackground,
+      color = LightPrimaryText,
       fontSize = 12.sp,
       fontWeight = FontWeight.Medium
     )

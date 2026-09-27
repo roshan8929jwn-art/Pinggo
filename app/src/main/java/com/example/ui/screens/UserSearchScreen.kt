@@ -79,7 +79,7 @@ fun UserSearchScreen(
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
-            tint = MaterialTheme.colorScheme.onSurface
+            tint = LightPrimaryText
           )
         }
         Spacer(modifier = Modifier.width(4.dp))
@@ -103,7 +103,7 @@ fun UserSearchScreen(
         Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
           Text(
             text = "No registered Pinggo users found for \"$searchQuery\"",
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            color = LightSecondaryText,
             fontSize = 14.sp
           )
         }
@@ -140,7 +140,7 @@ fun UserSearchScreen(
                     text = user.displayName.ifEmpty { user.username },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = LightPrimaryText
                   )
                   Text(
                     text = user.handle,
@@ -210,7 +210,7 @@ fun UserSearchScreen(
                           .size(32.dp)
                           .liquidDrop(interactionSource = cancelInteraction, isPinkTint = true, maxRadius = 18.dp)
                       ) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel Request", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Cancel Request", tint = LightSecondaryText, modifier = Modifier.size(16.dp))
                       }
                     }
                   }
@@ -298,7 +298,7 @@ fun UserSearchScreen(
               text = user.displayName.ifEmpty { user.username },
               fontSize = 20.sp,
               fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurface
+              color = LightPrimaryText
             )
             Text(
               text = user.handle,
@@ -310,7 +310,7 @@ fun UserSearchScreen(
             Text(
               text = user.bio,
               fontSize = 13.sp,
-              color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+              color = LightSecondaryText,
               textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 

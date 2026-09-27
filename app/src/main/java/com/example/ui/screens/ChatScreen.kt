@@ -4,15 +4,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,17 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
-import com.example.model.Conversation
-import com.example.model.Message
-import com.example.model.User
-import com.example.ui.components.GlassAvatar
-import com.example.ui.components.GlassButton
-import com.example.ui.components.GlassChatBubble
-import com.example.ui.components.GlassContainer
-import com.example.ui.components.LiquidGlassBackground
-import com.example.ui.components.liquidDrop
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.ripple
+import com.example.model.*
+import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 import java.text.SimpleDateFormat
@@ -110,9 +97,9 @@ fun ChatScreen(
           .fillMaxWidth()
           .padding(horizontal = 14.dp, vertical = 6.dp),
         shape = RoundedCornerShape(28.dp),
-        color = Color.White.copy(alpha = 0.8f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.9f)),
-        shadowElevation = 8.dp
+        color = Color.White.copy(alpha = 0.6f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.9f)),
+        shadowElevation = 3.dp
       ) {
         Row(
           modifier = Modifier
@@ -131,7 +118,7 @@ fun ChatScreen(
             Icon(
               imageVector = Icons.AutoMirrored.Filled.ArrowBack,
               contentDescription = "Back",
-              tint = MaterialTheme.colorScheme.onSurface
+              tint = LightPrimaryText
             )
           }
 
@@ -149,7 +136,7 @@ fun ChatScreen(
               text = chatTitle,
               fontSize = 16.sp,
               fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurface,
+              color = LightPrimaryText,
               maxLines = 1,
               overflow = TextOverflow.Ellipsis
             )
@@ -210,12 +197,12 @@ fun ChatScreen(
               Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = "More",
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = LightPrimaryText
               )
             }
-            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            GlassDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
               DropdownMenuItem(
-                text = { Text("Block User") },
+                text = { Text("Block User", color = LightPrimaryText) },
                 onClick = {
                   showMenu = false
                   if (otherParticipant != null) {
@@ -224,7 +211,7 @@ fun ChatScreen(
                 }
               )
               DropdownMenuItem(
-                text = { Text("Report User") },
+                text = { Text("Report User", color = LightPrimaryText) },
                 onClick = {
                   showMenu = false
                   if (otherParticipant != null) {
@@ -247,7 +234,7 @@ fun ChatScreen(
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
               text = "Say hello! 👋",
-              color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+              color = LightSecondaryText,
               fontSize = 15.sp
             )
           }
@@ -279,7 +266,7 @@ fun ChatScreen(
                     Column(
                       modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSent) PinggoPinkPrimary else MaterialTheme.colorScheme.surface)
+                        .background(if (isSent) PinggoPinkPrimary else Color.White.copy(alpha = 0.45f))
                         .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
                         .padding(6.dp)
                     ) {
@@ -342,13 +329,13 @@ fun ChatScreen(
                 Text(
                   text = reply.text,
                   fontSize = 12.sp,
-                  color = MaterialTheme.colorScheme.onSurface,
+                  color = LightPrimaryText,
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis
                 )
               }
               IconButton(onClick = { viewModel.setReplyingTo(null) }, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Close, null, tint = LightPrimaryText, modifier = Modifier.size(16.dp))
               }
             }
           }
@@ -362,9 +349,9 @@ fun ChatScreen(
           .navigationBarsPadding()
           .padding(horizontal = 14.dp, vertical = 8.dp),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White.copy(alpha = 0.9f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.95f)),
-        shadowElevation = 10.dp
+        color = Color.White.copy(alpha = 0.7f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.95f)),
+        shadowElevation = 4.dp
       ) {
         Row(
           modifier = Modifier
@@ -400,7 +387,7 @@ fun ChatScreen(
             if (inputText.isEmpty()) {
               Text(
                 text = "Type a message...",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                color = LightSecondaryText,
                 fontSize = 15.sp
               )
             }
@@ -412,7 +399,7 @@ fun ChatScreen(
               },
               maxLines = 4,
               textStyle = TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
+                color = LightPrimaryText,
                 fontSize = 15.sp
               ),
               cursorBrush = SolidColor(PinggoPinkPrimary),
@@ -431,7 +418,7 @@ fun ChatScreen(
               .liquidDrop(interactionSource = attachInteraction, isPinkTint = true, maxRadius = 20.dp),
             interactionSource = attachInteraction
           ) {
-            Icon(Icons.Default.AttachFile, "Attach", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.AttachFile, "Attach", tint = LightSecondaryText, modifier = Modifier.size(20.dp))
           }
 
           val camInteraction = remember { MutableInteractionSource() }
@@ -442,7 +429,7 @@ fun ChatScreen(
               .liquidDrop(interactionSource = camInteraction, isPinkTint = true, maxRadius = 20.dp),
             interactionSource = camInteraction
           ) {
-            Icon(Icons.Default.CameraAlt, "Camera", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.CameraAlt, "Camera", tint = LightSecondaryText, modifier = Modifier.size(20.dp))
           }
 
           Spacer(modifier = Modifier.width(4.dp))
@@ -588,7 +575,7 @@ fun ChatScreen(
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f))
+          .background(Color.White.copy(alpha = 0.8f))
           .statusBarsPadding()
           .navigationBarsPadding()
           .padding(24.dp),
@@ -604,14 +591,14 @@ fun ChatScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             IconButton(onClick = { viewModel.cancelVoiceRecording() }) {
-              Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground)
+              Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = LightPrimaryText)
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
               text = "Recording...",
               fontSize = 20.sp,
               fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onBackground
+              color = LightPrimaryText
             )
           }
 
@@ -625,7 +612,7 @@ fun ChatScreen(
             text = String.format("%02d:%02d", recordingDuration / 60, recordingDuration % 60),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = LightPrimaryText
           )
 
           Spacer(modifier = Modifier.height(60.dp))
@@ -694,8 +681,8 @@ fun MediaTile(
     modifier = Modifier
       .width(110.dp)
       .clip(RoundedCornerShape(20.dp))
-      .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-      .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+      .background(Color.White.copy(alpha = 0.5f))
+      .border(0.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(20.dp))
       .liquidDrop(interactionSource = tileInteraction, isPinkTint = true, maxRadius = 38.dp)
       .clickable(
         interactionSource = tileInteraction,
@@ -715,7 +702,7 @@ fun MediaTile(
     Spacer(modifier = Modifier.height(8.dp))
     Text(
       text = label,
-      color = MaterialTheme.colorScheme.onSurface,
+      color = LightPrimaryText,
       fontSize = 13.sp,
       fontWeight = FontWeight.Medium
     )
@@ -763,13 +750,13 @@ fun VoiceMessageBubble(
 ) {
   val shape = RoundedCornerShape(20.dp)
   val bg = if (isSent) PinggoPinkPrimary else MaterialTheme.colorScheme.surface
-  val contentColor = if (isSent) Color.White else MaterialTheme.colorScheme.onSurface
+  val contentColor = if (isSent) Color.White else LightPrimaryText
 
   Row(
     modifier = Modifier
       .clip(shape)
-      .background(bg)
-      .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), shape)
+      .background(if (isSent) PinggoPinkPrimary else Color.White.copy(alpha = 0.6f))
+      .border(0.5.dp, if (isSent) Color.Transparent else Color.White.copy(alpha = 0.9f), shape)
       .padding(horizontal = 14.dp, vertical = 10.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {

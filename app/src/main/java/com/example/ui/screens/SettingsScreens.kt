@@ -52,8 +52,7 @@ import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.liquidDrop
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.components.PinggoFullLogo
-import com.example.ui.theme.AppThemeMode
-import com.example.ui.theme.PinggoPinkPrimary
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 
 @Composable
@@ -90,7 +89,7 @@ fun SettingsScreen(
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
-            tint = MaterialTheme.colorScheme.onBackground
+            tint = LightPrimaryText
           )
         }
         Spacer(modifier = Modifier.width(6.dp))
@@ -107,7 +106,7 @@ fun SettingsScreen(
           },
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onBackground
+          color = LightPrimaryText
         )
       }
 
@@ -119,7 +118,7 @@ fun SettingsScreen(
             text = "Theme Mode",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            color = LightSecondaryText,
             modifier = Modifier.padding(bottom = 8.dp)
           )
 
@@ -214,7 +213,7 @@ fun SettingsScreen(
                   Text(
                     text = label,
                     fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = LightPrimaryText,
                     modifier = Modifier.weight(1f)
                   )
                   RadioButton(
@@ -254,7 +253,7 @@ fun SettingsScreen(
                   text = "Send Read Receipts",
                   fontSize = 15.sp,
                   fontWeight = FontWeight.Medium,
-                  color = MaterialTheme.colorScheme.onSurface
+                  color = LightPrimaryText
                 )
                 Text(
                   text = if (user?.privacyReadReceipts != false) "On • Senders see when messages are read" else "Off • No read status sent or seen",
@@ -302,7 +301,7 @@ fun SettingsScreen(
                   Text(
                     text = label,
                     fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = LightPrimaryText,
                     modifier = Modifier.weight(1f)
                   )
                   RadioButton(
@@ -360,7 +359,7 @@ fun SettingsScreen(
                         text = blockedUser.displayName.ifEmpty { blockedUser.username },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = LightPrimaryText
                       )
                       Text(
                         text = "@${blockedUser.username}",
@@ -397,7 +396,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(text = "Direct Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                  Text(text = "Direct Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LightPrimaryText)
                   Text(text = "Receive alerts for one-on-one chats", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
                 Switch(
@@ -419,7 +418,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(text = "Group Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                  Text(text = "Group Messages", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LightPrimaryText)
                   Text(text = "Receive alerts for group chats", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
                 Switch(
@@ -441,7 +440,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
               ) {
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(text = "Show Notification Preview", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                  Text(text = "Show Notification Preview", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LightPrimaryText)
                   Text(text = "Preview message text inside lockscreen notification banner", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
                 Switch(
@@ -476,7 +475,7 @@ fun SettingsScreen(
               horizontalArrangement = Arrangement.SpaceBetween
             ) {
               Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Incoming Calls", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                Text(text = "Incoming Calls", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LightPrimaryText)
                 Text(text = "Vibrate and ring for incoming voice & video calls", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
               }
               Switch(
@@ -517,7 +516,7 @@ fun SettingsScreen(
                   "Signaling: WebRTC Peer-to-Peer Calls",
                 fontSize = 13.sp,
                 lineHeight = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = LightPrimaryText,
                 textAlign = TextAlign.Center
               )
             }
@@ -532,7 +531,7 @@ fun SettingsScreen(
                 text = "Pinggo Mobile Messenger",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = LightPrimaryText
               )
               Text(
                 text = "Connected as @${user?.username ?: "user"}",

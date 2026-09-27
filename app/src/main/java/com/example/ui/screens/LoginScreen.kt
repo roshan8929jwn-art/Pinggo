@@ -30,9 +30,10 @@ import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassCard
 import com.example.ui.components.GlassInput
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.liquidDrop
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.ui.components.PinggoFullLogo
-import com.example.ui.theme.PinggoPinkPrimary
-import com.example.ui.theme.PinggoPinkLight
+import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 
 @Composable
@@ -79,7 +80,7 @@ fun LoginScreen(
         Text(
           text = "Welcome to Pinggo",
           style = MaterialTheme.typography.headlineLarge,
-          color = MaterialTheme.colorScheme.onBackground,
+          color = LightPrimaryText,
           textAlign = TextAlign.Center
         )
 
@@ -88,7 +89,7 @@ fun LoginScreen(
         Text(
           text = "Connect with your friends with real Google and password authentication",
           style = MaterialTheme.typography.bodyLarge,
-          color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+          color = LightSecondaryText,
           textAlign = TextAlign.Center,
           lineHeight = 22.sp
         )
@@ -99,13 +100,18 @@ fun LoginScreen(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
-        // "Continue with Google" Official Google Account Pill Button
+        val googleInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
         Surface(
           modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
             .clip(RoundedCornerShape(28.dp))
-            .clickable(enabled = !isLoading) {
+            .liquidDrop(interactionSource = googleInteraction, isPinkTint = false, maxRadius = 40.dp)
+            .clickable(
+              enabled = !isLoading,
+              interactionSource = googleInteraction,
+              indication = androidx.compose.material3.ripple(bounded = true, color = Color.LightGray)
+            ) {
               viewModel.signInWithGoogle()
             }
             .testTag("google_login_button"),
@@ -152,7 +158,7 @@ fun LoginScreen(
             text = "OR",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            color = LightSecondaryText.copy(alpha = 0.6f),
             modifier = Modifier.padding(horizontal = 12.dp)
           )
           Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFFEEEEEE)))
@@ -190,7 +196,7 @@ fun LoginScreen(
           Text(
             text = "Don't have an account?",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+            color = LightSecondaryText
           )
           TextButton(onClick = onSignUpRequested) {
             Text(
@@ -212,7 +218,7 @@ fun LoginScreen(
           text = "\uD83D\uDEE0️ Diagnostics",
           style = MaterialTheme.typography.labelMedium,
           fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+          color = LightSecondaryText.copy(alpha = 0.7f),
           modifier = Modifier.clickable { onOpenDiagnostics() }
         )
         Spacer(modifier = Modifier.height(10.dp))

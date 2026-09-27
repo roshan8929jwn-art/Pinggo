@@ -28,6 +28,8 @@ import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassCard
 import com.example.ui.components.GlassInput
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.liquidDrop
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.theme.PinggoPinkPrimary
 import com.example.viewmodel.PinggoViewModel
@@ -73,7 +75,14 @@ fun SignUpScreen(
           .padding(top = 10.dp, bottom = 24.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+        val backInteraction = remember { MutableInteractionSource() }
+        IconButton(
+          onClick = onBack,
+          interactionSource = backInteraction,
+          modifier = Modifier
+            .size(40.dp)
+            .liquidDrop(interactionSource = backInteraction, isPinkTint = true, maxRadius = 22.dp)
+        ) {
           Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground)
         }
         Spacer(modifier = Modifier.width(6.dp))

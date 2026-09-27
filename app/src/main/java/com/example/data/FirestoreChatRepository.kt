@@ -81,7 +81,11 @@ class FirestoreChatRepository {
               @Suppress("UNCHECKED_CAST")
               val mutedBy = (data["mutedBy"] as? List<String>) ?: emptyList()
               @Suppress("UNCHECKED_CAST")
+              val mutedUntil = (data["mutedUntil"] as? Map<String, Number>)?.mapValues { it.value.toLong() } ?: emptyMap()
+              @Suppress("UNCHECKED_CAST")
               val archivedBy = (data["archivedBy"] as? List<String>) ?: emptyList()
+              @Suppress("UNCHECKED_CAST")
+              val deletedBy = (data["deletedBy"] as? List<String>) ?: emptyList()
               val createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L
               val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L
 
@@ -100,14 +104,17 @@ class FirestoreChatRepository {
                 adminUids = adminUids,
                 pinnedBy = pinnedBy,
                 mutedBy = mutedBy,
+                mutedUntil = mutedUntil,
                 archivedBy = archivedBy,
+                deletedBy = deletedBy,
                 createdAt = createdAt,
                 updatedAt = updatedAt
               )
             } catch (e: Exception) {
               null
             }
-          }.sortedByDescending { it.lastMessageTimestamp }
+          }.filter { conv -> !conv.deletedBy.contains(userId) }
+           .sortedByDescending { it.lastMessageTimestamp }
           trySend(list)
         }
       }
@@ -122,6 +129,41 @@ class FirestoreChatRepository {
       } catch (e: Throwable) {
         // ignore
       }
+    }
+  }
+
+  suspend fun muteConversation(conversationId: String, userId: String, untilTimestamp: Long) {
+    val db = firestore ?: return
+    try {
+      val docRef = db.collection("conversations").document(conversationId)
+      if (untilTimestamp > System.currentTimeMillis() || untilTimestamp == -1L) {
+        docRef.update(
+          mapOf(
+            "mutedBy" to com.google.firebase.firestore.FieldValue.arrayUnion(userId),
+            "mutedUntil.$userId" to untilTimestamp
+          )
+        ).await()
+      } else {
+        docRef.update(
+          mapOf(
+            "mutedBy" to com.google.firebase.firestore.FieldValue.arrayRemove(userId),
+            "mutedUntil.$userId" to com.google.firebase.firestore.FieldValue.delete()
+          )
+        ).await()
+      }
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
+  }
+
+  suspend fun deleteConversation(conversationId: String, userId: String) {
+    val db = firestore ?: return
+    try {
+      db.collection("conversations").document(conversationId).update(
+        "deletedBy", com.google.firebase.firestore.FieldValue.arrayUnion(userId)
+      ).await()
+    } catch (e: Exception) {
+      e.printStackTrace()
     }
   }
 
