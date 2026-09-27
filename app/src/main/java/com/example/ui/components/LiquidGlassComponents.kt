@@ -135,6 +135,7 @@ fun GlassContainer(
   shape: Shape = RoundedCornerShape(28.dp),
   isDark: Boolean = isSystemInDarkTheme(),
   elevation: Dp = 10.dp,
+  animateModalReveal: Boolean = true,
   content: @Composable BoxScope.() -> Unit
 ) {
   val design = LocalGlassDesign.current
@@ -144,12 +145,14 @@ fun GlassContainer(
     else -> if (isDark) Color(0xFF1E1E1E).copy(alpha = 0.7f) else Color.White.copy(alpha = 0.6f)
   }
   val borderColor = if (isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.8f)
+  val modalModifier = if (animateModalReveal) Modifier.liquidDropModalReveal(isPinkTint = true) else Modifier
 
   Box(
     modifier = modifier
       .shadow(elevation = elevation, shape = shape)
       .clip(shape)
       .background(surfaceColor)
+      .then(modalModifier)
       .drawBehind {
         // Subtle top-left highlight
         drawRect(
@@ -185,11 +188,14 @@ fun GlassCard(
     else -> if (isDark) DarkSurface.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.5f)
   }
   
+  val interactionSource = remember { MutableInteractionSource() }
   val clickableModifier = if (onClick != null) {
-    Modifier.clickable(
-      interactionSource = remember { MutableInteractionSource() },
-      indication = ripple(bounded = true, color = PinggoPinkPrimary)
-    ) { onClick() }
+    Modifier
+      .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = 48.dp)
+      .clickable(
+        interactionSource = interactionSource,
+        indication = ripple(bounded = true, color = PinggoPinkPrimary)
+      ) { onClick() }
   } else Modifier
 
   Box(
@@ -245,14 +251,17 @@ fun GlassButton(
   val contentColor = if (isPrimary) Color.White else MaterialTheme.colorScheme.onBackground
   val borderColor = if (isPrimary) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
 
+  val interactionSource = remember { MutableInteractionSource() }
+
   Surface(
     modifier = modifier
       .heightIn(min = 54.dp)
       .clip(shape)
       .testTag(testTag)
+      .liquidDrop(interactionSource = interactionSource, isPinkTint = !isPrimary, maxRadius = 52.dp)
       .clickable(
         enabled = enabled && !isLoading,
-        interactionSource = remember { MutableInteractionSource() },
+        interactionSource = interactionSource,
         indication = ripple(bounded = true, color = if(isPrimary) Color.White else PinggoPinkPrimary)
       ) { onClick() },
     shape = shape,
@@ -314,6 +323,7 @@ fun GlassIconButton(
 ) {
   val iconTint = tint ?: MaterialTheme.colorScheme.onSurface
   val surfaceColor = if(isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+  val interactionSource = remember { MutableInteractionSource() }
 
   Box(
     modifier = modifier
@@ -321,8 +331,9 @@ fun GlassIconButton(
       .clip(CircleShape)
       .background(surfaceColor)
       .border(BorderStroke(1.dp, if(isDark) Color.White.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.4f)), CircleShape)
+      .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = (size / 2) + 6.dp)
       .clickable(
-        interactionSource = remember { MutableInteractionSource() },
+        interactionSource = interactionSource,
         indication = ripple(bounded = false, color = PinggoPinkPrimary)
       ) { onClick() }
       .testTag(testTag),
@@ -495,11 +506,14 @@ fun GlassAvatar(
     Brush.verticalGradient(listOf(Color.LightGray.copy(alpha = 0.4f), Color.Transparent))
   }
 
+  val avatarInteraction = remember { MutableInteractionSource() }
   val clickableModifier = if (onClick != null) {
-    Modifier.clickable(
-      interactionSource = remember { MutableInteractionSource() },
-      indication = ripple(bounded = false)
-    ) { onClick() }
+    Modifier
+      .liquidDrop(interactionSource = avatarInteraction, isPinkTint = true, maxRadius = (size / 2) + 6.dp)
+      .clickable(
+        interactionSource = avatarInteraction,
+        indication = ripple(bounded = false, color = PinggoPinkPrimary)
+      ) { onClick() }
   } else Modifier
 
   Box(modifier = modifier.size(size).then(clickableModifier)) {

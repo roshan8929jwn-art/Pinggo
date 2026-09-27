@@ -50,6 +50,9 @@ import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassChatBubble
 import com.example.ui.components.GlassContainer
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.liquidDrop
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ripple
 import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
 import java.text.SimpleDateFormat
@@ -117,7 +120,14 @@ fun ChatScreen(
             .padding(horizontal = 10.dp, vertical = 8.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+          val backInteraction = remember { MutableInteractionSource() }
+          IconButton(
+            onClick = onBack,
+            modifier = Modifier
+              .size(36.dp)
+              .liquidDrop(interactionSource = backInteraction, isPinkTint = true, maxRadius = 22.dp),
+            interactionSource = backInteraction
+          ) {
             Icon(
               imageVector = Icons.AutoMirrored.Filled.ArrowBack,
               contentDescription = "Back",
@@ -151,6 +161,7 @@ fun ChatScreen(
           }
 
           // Voice Call Icon
+          val callInteraction = remember { MutableInteractionSource() }
           IconButton(
             onClick = {
               if (otherParticipant != null) {
@@ -158,7 +169,10 @@ fun ChatScreen(
                 onStartCall(target, "voice")
               }
             },
-            modifier = Modifier.size(38.dp)
+            modifier = Modifier
+              .size(38.dp)
+              .liquidDrop(interactionSource = callInteraction, isPinkTint = true, maxRadius = 22.dp),
+            interactionSource = callInteraction
           ) {
             Icon(
               imageVector = Icons.Default.Call,
@@ -169,6 +183,7 @@ fun ChatScreen(
           }
 
           // Video Call Icon
+          val videoInteraction = remember { MutableInteractionSource() }
           IconButton(
             onClick = {
               if (otherParticipant != null) {
@@ -176,7 +191,10 @@ fun ChatScreen(
                 onStartCall(target, "video")
               }
             },
-            modifier = Modifier.size(38.dp)
+            modifier = Modifier
+              .size(38.dp)
+              .liquidDrop(interactionSource = videoInteraction, isPinkTint = true, maxRadius = 22.dp),
+            interactionSource = videoInteraction
           ) {
             Icon(
               imageVector = Icons.Default.Videocam,
@@ -355,12 +373,17 @@ fun ChatScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           // Plus button
+          val plusInteraction = remember { MutableInteractionSource() }
           Box(
             modifier = Modifier
               .size(36.dp)
               .clip(CircleShape)
               .background(PinggoPinkLight.copy(alpha = 0.3f))
-              .clickable { showMediaPicker = true },
+              .liquidDrop(interactionSource = plusInteraction, isPinkTint = true, maxRadius = 24.dp)
+              .clickable(
+                interactionSource = plusInteraction,
+                indication = ripple(bounded = false, color = PinggoPinkPrimary)
+              ) { showMediaPicker = true },
             contentAlignment = Alignment.Center
           ) {
             Icon(Icons.Default.Add, "Choose Media", tint = PinggoPinkPrimary, modifier = Modifier.size(20.dp))
@@ -400,16 +423,24 @@ fun ChatScreen(
           }
 
           // Attachment icons
+          val attachInteraction = remember { MutableInteractionSource() }
           IconButton(
             onClick = { imagePickerLauncher.launch("image/*") },
-            modifier = Modifier.size(34.dp)
+            modifier = Modifier
+              .size(34.dp)
+              .liquidDrop(interactionSource = attachInteraction, isPinkTint = true, maxRadius = 20.dp),
+            interactionSource = attachInteraction
           ) {
             Icon(Icons.Default.AttachFile, "Attach", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
           }
 
+          val camInteraction = remember { MutableInteractionSource() }
           IconButton(
             onClick = { imagePickerLauncher.launch("image/*") },
-            modifier = Modifier.size(34.dp)
+            modifier = Modifier
+              .size(34.dp)
+              .liquidDrop(interactionSource = camInteraction, isPinkTint = true, maxRadius = 20.dp),
+            interactionSource = camInteraction
           ) {
             Icon(Icons.Default.CameraAlt, "Camera", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
           }
@@ -418,12 +449,17 @@ fun ChatScreen(
 
           // Send or Mic Action button
           if (inputText.trim().isNotEmpty()) {
+            val sendInteraction = remember { MutableInteractionSource() }
             Box(
               modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(PinggoPinkPrimary)
-                .clickable {
+                .liquidDrop(interactionSource = sendInteraction, isPinkTint = false, maxRadius = 24.dp)
+                .clickable(
+                  interactionSource = sendInteraction,
+                  indication = ripple(bounded = false, color = Color.White)
+                ) {
                   viewModel.sendMessage(inputText)
                   inputText = ""
                   viewModel.setTyping(false)
@@ -439,12 +475,17 @@ fun ChatScreen(
               )
             }
           } else {
+            val micInteraction = remember { MutableInteractionSource() }
             Box(
               modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(PinggoPinkPrimary)
-                .clickable { viewModel.startVoiceRecording() }
+                .liquidDrop(interactionSource = micInteraction, isPinkTint = false, maxRadius = 24.dp)
+                .clickable(
+                  interactionSource = micInteraction,
+                  indication = ripple(bounded = false, color = Color.White)
+                ) { viewModel.startVoiceRecording() }
                 .testTag("record_mic_button"),
               contentAlignment = Alignment.Center
             ) {
@@ -647,6 +688,7 @@ fun MediaTile(
   label: String,
   onClick: () -> Unit
 ) {
+  val tileInteraction = remember { MutableInteractionSource() }
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     modifier = Modifier
@@ -654,7 +696,11 @@ fun MediaTile(
       .clip(RoundedCornerShape(20.dp))
       .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
       .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
-      .clickable { onClick() }
+      .liquidDrop(interactionSource = tileInteraction, isPinkTint = true, maxRadius = 38.dp)
+      .clickable(
+        interactionSource = tileInteraction,
+        indication = ripple(bounded = true, color = PinggoPinkPrimary)
+      ) { onClick() }
       .padding(vertical = 16.dp)
   ) {
     Box(

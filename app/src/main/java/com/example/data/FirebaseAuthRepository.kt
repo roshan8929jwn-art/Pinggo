@@ -180,16 +180,16 @@ class FirebaseAuthRepository(private val context: Context) {
     val currentFirebaseUser = a.currentUser
       ?: return Result.failure(IllegalStateException("User is not authenticated"))
 
-    val cleanUsername = username.trim().lowercase().removePrefix("@")
-    val available = isUsernameAvailable(cleanUsername)
-    if (!available) {
-      return Result.failure(IllegalArgumentException("Username @$cleanUsername is already taken"))
+    val displayUsername = username.trim().removePrefix("@")
+    val cleanUsername = displayUsername.lowercase()
+    if (cleanUsername.length < 3 || cleanUsername.length > 20 || !Regex("^[a-z0-9_]+$").matches(cleanUsername)) {
+      return Result.failure(IllegalArgumentException("Username must be 3-20 characters (a-z, 0-9, _)"))
     }
 
     val user = User(
       uid = currentFirebaseUser.uid,
       displayName = displayName.ifEmpty { currentFirebaseUser.displayName ?: "Pinggo User" },
-      username = cleanUsername,
+      username = displayUsername,
       usernameLowercase = cleanUsername,
       email = currentFirebaseUser.email ?: "",
       photoURL = photoUrl.ifEmpty { currentFirebaseUser.photoUrl?.toString() ?: "" },
@@ -200,10 +200,18 @@ class FirebaseAuthRepository(private val context: Context) {
     )
 
     return try {
-      db.collection("users").document(user.uid).set(user.toMap()).await()
-      db.collection("usernames").document(cleanUsername).set(
-        mapOf("uid" to user.uid, "email" to user.email)
-      ).await()
+      db.runTransaction { transaction ->
+        val usernameDocRef = db.collection("usernames").document(cleanUsername)
+        val existingDoc = transaction.get(usernameDocRef)
+        if (existingDoc.exists() && existingDoc.getString("uid") != currentFirebaseUser.uid) {
+          throw IllegalStateException("Username @$displayUsername is already taken")
+        }
+        transaction.set(db.collection("users").document(user.uid), user.toMap())
+        transaction.set(
+          usernameDocRef,
+          mapOf("uid" to user.uid, "email" to user.email, "username" to displayUsername)
+        )
+      }.await()
       _userProfile.value = user
       Result.success(user)
     } catch (e: Exception) {
@@ -224,23 +232,17 @@ class FirebaseAuthRepository(private val context: Context) {
       ?: return Result.failure(IllegalStateException("User is not authenticated"))
 
     val currentProfile = _userProfile.value ?: loadUserProfile(currentFirebaseUser.uid)
-    val oldUsername = currentProfile?.username?.lowercase()?.removePrefix("@") ?: ""
-    val cleanNewUsername = newUsername.trim().lowercase().removePrefix("@")
+    val oldUsername = currentProfile?.usernameLowercase?.ifEmpty { currentProfile.username.lowercase().removePrefix("@") } ?: ""
+    val displayNewUsername = newUsername.trim().removePrefix("@")
+    val cleanNewUsername = displayNewUsername.lowercase()
 
     if (cleanNewUsername.length < 3 || cleanNewUsername.length > 20 || !Regex("^[a-z0-9_]+$").matches(cleanNewUsername)) {
       return Result.failure(IllegalArgumentException("Username must be 3-20 characters (a-z, 0-9, _)"))
     }
 
-    if (cleanNewUsername != oldUsername) {
-      val available = isUsernameAvailable(cleanNewUsername)
-      if (!available) {
-        return Result.failure(IllegalArgumentException("Username @$cleanNewUsername is already taken"))
-      }
-    }
-
     val updatedUser = (currentProfile ?: User(uid = currentFirebaseUser.uid)).copy(
       displayName = displayName.ifEmpty { currentProfile?.displayName ?: "Pinggo User" },
-      username = cleanNewUsername,
+      username = displayNewUsername,
       usernameLowercase = cleanNewUsername,
       bio = bio,
       photoURL = photoUrl.ifEmpty { currentProfile?.photoURL ?: "" }
@@ -249,12 +251,17 @@ class FirebaseAuthRepository(private val context: Context) {
     return try {
       db.runTransaction { transaction ->
         if (cleanNewUsername != oldUsername) {
+          val newUsernameDocRef = db.collection("usernames").document(cleanNewUsername)
+          val existingDoc = transaction.get(newUsernameDocRef)
+          if (existingDoc.exists() && existingDoc.getString("uid") != currentFirebaseUser.uid) {
+            throw IllegalStateException("Username @$displayNewUsername is already taken")
+          }
           if (oldUsername.isNotEmpty()) {
             transaction.delete(db.collection("usernames").document(oldUsername))
           }
           transaction.set(
-            db.collection("usernames").document(cleanNewUsername),
-            mapOf("uid" to currentFirebaseUser.uid, "email" to updatedUser.email)
+            newUsernameDocRef,
+            mapOf("uid" to currentFirebaseUser.uid, "email" to updatedUser.email, "username" to displayNewUsername)
           )
         }
         transaction.set(db.collection("users").document(currentFirebaseUser.uid), updatedUser.toMap())

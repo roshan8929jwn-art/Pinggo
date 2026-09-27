@@ -520,6 +520,21 @@ class FirestoreChatRepository {
     return try {
       val results = mutableListOf<User>()
 
+      // 0. Search by canonical usernames collection
+      val canonicalDoc = db.collection("usernames").document(clean).get().await()
+      if (canonicalDoc.exists()) {
+        val targetUid = canonicalDoc.getString("uid")
+        if (!targetUid.isNullOrEmpty() && targetUid != currentUserId) {
+          val userDoc = db.collection("users").document(targetUid).get().await()
+          if (userDoc.exists()) {
+            val user = User.fromMap(userDoc.data ?: emptyMap())
+            if (results.none { it.uid == user.uid }) {
+              results.add(user)
+            }
+          }
+        }
+      }
+
       // 1. Search by exact usernameLowercase
       val exactMatch = db.collection("users")
         .whereEqualTo("usernameLowercase", clean)
@@ -876,8 +891,18 @@ class FirestoreChatRepository {
 
   suspend fun sendFriendRequest(sender: User, receiverId: String): Result<Unit> {
     val db = firestore ?: return Result.failure(IllegalStateException("Firestore not available"))
+    if (sender.uid == receiverId) {
+      return Result.failure(IllegalArgumentException("You cannot send a friend request to yourself."))
+    }
+    if (sender.friends.contains(receiverId)) {
+      return Result.failure(IllegalArgumentException("You are already friends with this user."))
+    }
     try {
       val requestId = "${sender.uid}_$receiverId"
+      val existingReq = db.collection("friend_requests").document(requestId).get().await()
+      if (existingReq.exists() && existingReq.getString("status") == "pending") {
+        return Result.failure(IllegalArgumentException("Friend request is already pending."))
+      }
       val request = com.example.model.FriendRequest(
         id = requestId,
         senderId = sender.uid,

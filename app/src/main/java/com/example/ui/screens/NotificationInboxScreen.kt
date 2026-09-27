@@ -172,20 +172,28 @@ fun FriendRequestItem(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val acceptInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                     Button(
                         onClick = onAccept,
+                        interactionSource = acceptInteraction,
                         colors = ButtonDefaults.buttonColors(containerColor = PinggoPinkPrimary),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.height(36.dp),
+                        modifier = Modifier
+                            .height(36.dp)
+                            .liquidDrop(interactionSource = acceptInteraction, isPinkTint = false, maxRadius = 24.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                     ) {
                         Text("Accept", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
+                    val declineInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                     OutlinedButton(
                         onClick = onDecline,
+                        interactionSource = declineInteraction,
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.height(36.dp),
+                        modifier = Modifier
+                            .height(36.dp)
+                            .liquidDrop(interactionSource = declineInteraction, isPinkTint = true, maxRadius = 24.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                     ) {
                         Text("Decline", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), fontSize = 13.sp)
@@ -252,7 +260,7 @@ fun NotificationItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = formatTimestamp(notification.timestamp),
+                    text = formatNotificationTimestamp(notification.timestamp),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
@@ -270,7 +278,7 @@ fun NotificationItem(
     }
 }
 
-fun formatTimestamp(timestamp: Long): String {
+private fun formatNotificationTimestamp(timestamp: Long): String {
     val date = Date(timestamp)
     val now = Calendar.getInstance()
     val time = Calendar.getInstance().apply { time = date }

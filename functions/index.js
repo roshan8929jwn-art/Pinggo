@@ -5,106 +5,152 @@ const crypto = require("crypto");
 
 admin.initializeApp();
 
-const gmailEmail = "roshan8929jwn@gmail.com";
-// EMAIL_PASS is stored in Firebase Secrets
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: gmailEmail,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
 /**
- * Generates a 6-digit OTP, hashes it, and stores it in Firestore.
- * Sends the plain OTP via email.
+ * Creates nodemailer transport using environment variables or secrets
  */
-exports.sendOtp = functions.https.onCall(async (data, context) => {
-  const email = data.email;
-  if (!email) {
-    throw new functions.https.HttpsError("invalid-argument", "Email is required.");
+function getTransporter() {
+  const user = process.env.EMAIL_USER || process.env.GMAIL_EMAIL || "roshan8929jwn@gmail.com";
+  const pass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+
+  if (!pass) {
+    return null;
   }
 
-  // Rate limiting: Check last sent time
-  const otpRef = admin.firestore().collection("otps").document(email);
-  const doc = await otpRef.get();
-  
-  if (doc.exists) {
-    const lastSent = doc.data().createdAt.toMillis();
-    if (Date.now() - lastSent < 120000) { // 2 minute cooldown
-      throw new functions.https.HttpsError("resource-exhausted", "Please wait 2 minutes before requesting a new OTP.");
+  return {
+    transporter: nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass }
+    }),
+    senderEmail: user
+  };
+}
+
+/**
+ * sendOtp: Generates 6-digit OTP, stores hash in Firestore, sends email.
+ * Single-use, 5-minute expiry, rate-limited with cooldown.
+ */
+exports.sendOtp = functions.runWith({ secrets: ["EMAIL_USER", "EMAIL_PASS", "GMAIL_PASS"] }).https.onCall(async (data, context) => {
+  const email = (data.email || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    throw new functions.https.HttpsError("invalid-argument", "A valid email address is required.");
+  }
+
+  const mailConfig = getTransporter();
+  if (!mailConfig) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Email provider is not configured. Please set EMAIL_PASS secret in Firebase Functions CLI: firebase functions:secrets:set EMAIL_PASS"
+    );
+  }
+
+  const otpRef = admin.firestore().collection("otps").doc(email);
+  const existingDoc = await otpRef.get();
+
+  // Cooldown check (60 seconds)
+  if (existingDoc.exists) {
+    const data = existingDoc.data();
+    const lastSentAt = data.lastSentAt || 0;
+    const elapsed = Date.now() - lastSentAt;
+    if (elapsed < 60000) {
+      const waitSeconds = Math.ceil((60000 - elapsed) / 1000);
+      throw new functions.https.HttpsError(
+        "resource-exhausted",
+        `Please wait ${waitSeconds}s before requesting a new code.`
+      );
     }
   }
 
+  // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
   await otpRef.set({
     hashedOtp: hashedOtp,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    expiresAt: Date.now() + 600000, // 10 minutes
-    attempts: 0
+    lastSentAt: Date.now(),
+    expiresAt: expiresAt,
+    attempts: 0,
+    email: email
   });
 
   const mailOptions = {
-    from: `"Pinggo Auth" <${gmailEmail}>`,
+    from: `"Pinggo Messenger" <${mailConfig.senderEmail}>`,
     to: email,
     subject: "Your Pinggo Verification Code",
-    text: `Your verification code is: ${otp}. This code will expire in 10 minutes.`,
+    text: `Your verification code is: ${otp}. This code will expire in 5 minutes.`,
     html: `
-      <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #FF1493;">Welcome to Pinggo!</h2>
-        <p>Your verification code is:</p>
-        <h1 style="font-size: 32px; letter-spacing: 5px; color: #333;">${otp}</h1>
-        <p>This code will expire in 10 minutes. Do not share this code with anyone.</p>
-        <hr style="border: none; border-top: 1px solid #eee;" />
-        <p style="font-size: 12px; color: #999;">If you didn't request this, please ignore this email.</p>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; border: 1px solid #FFB6D9; border-radius: 20px; background-color: #FFFFFF;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #FF69B4; margin: 0; font-size: 28px; letter-spacing: -0.5px;">Pinggo 🐧</h1>
+          <p style="color: #8E8E93; font-size: 13px; margin-top: 4px;">Instant Real-time Messaging</p>
+        </div>
+        <div style="background: #F8F8FA; padding: 24px; text-align: center; border-radius: 16px; border: 1px solid #F0E6ED; margin-bottom: 24px;">
+          <p style="margin: 0 0 12px 0; font-size: 15px; color: #1C1C1E; font-weight: 500;">Your 6-digit verification code:</p>
+          <div style="letter-spacing: 8px; font-size: 36px; font-weight: 800; color: #FF69B4; font-family: monospace;">${otp}</div>
+          <p style="margin: 12px 0 0 0; font-size: 13px; color: #FF69B4; font-weight: 600;">Valid for 5 minutes only</p>
+        </div>
+        <p style="font-size: 13px; line-height: 1.6; color: #1C1C1E; margin-bottom: 20px;">
+          Please enter this code in Pinggo to verify your email. Never share this code with anyone. Pinggo will never ask for your code.
+        </p>
+        <hr style="border: none; border-top: 1px solid #F0E6ED; margin-bottom: 16px;" />
+        <p style="font-size: 11px; color: #8E8E93; text-align: center; margin: 0;">
+          If you did not request this verification code, you can safely disregard this email.
+        </p>
       </div>
     `,
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    return { success: true, message: "OTP sent successfully." };
+    await mailConfig.transporter.sendMail(mailOptions);
+    return { success: true, message: "Verification OTP sent to your email." };
   } catch (error) {
-    console.error("Error sending email:", error);
-    throw new functions.https.HttpsError("internal", "Unable to send email.");
+    console.error("Error sending OTP email:", error);
+    throw new functions.https.HttpsError("internal", `Email delivery failed: ${error.message || "Check SMTP credentials"}`);
   }
 });
 
 /**
- * Verifies the OTP provided by the user.
+ * verifyOtp: Validates single-use OTP on server, checks expiration (5 min) & max attempts (3).
+ * Marks user as verified.
  */
 exports.verifyOtp = functions.https.onCall(async (data, context) => {
-  const { email, otp } = data;
+  const email = (data.email || "").trim().toLowerCase();
+  const otp = (data.otp || "").trim();
+
   if (!email || !otp) {
-    throw new functions.https.HttpsError("invalid-argument", "Email and OTP are required.");
+    throw new functions.https.HttpsError("invalid-argument", "Email and 6-digit OTP code are required.");
   }
 
-  const otpRef = admin.firestore().collection("otps").document(email);
+  const otpRef = admin.firestore().collection("otps").doc(email);
   const doc = await otpRef.get();
 
   if (!doc.exists) {
-    throw new functions.https.HttpsError("not-found", "No OTP found for this email.");
+    throw new functions.https.HttpsError("not-found", "No verification request found for this email. Please request a new code.");
   }
 
   const otpData = doc.data();
-  
+
+  // 1. Expiration check (5 minutes)
   if (Date.now() > otpData.expiresAt) {
     await otpRef.delete();
-    throw new functions.https.HttpsError("deadline-exceeded", "OTP has expired.");
+    throw new functions.https.HttpsError("deadline-exceeded", "Verification code has expired (5-minute limit). Please request a new code.");
   }
 
+  // 2. Server-side attempt limit (3 attempts)
   if (otpData.attempts >= 3) {
     await otpRef.delete();
-    throw new functions.https.HttpsError("permission-denied", "Too many failed attempts. Please request a new OTP.");
+    throw new functions.https.HttpsError("permission-denied", "Too many failed attempts. Code has been invalidated. Please request a new one.");
   }
 
+  // 3. Cryptographic hash comparison
   const hashedInput = crypto.createHash("sha256").update(otp).digest("hex");
 
   if (hashedInput === otpData.hashedOtp) {
-    // Success: Mark user as verified in Firestore
+    // Single-use: delete immediately upon success
+    await otpRef.delete();
+
+    // Mark user verified in Firestore
     const userQuery = await admin.firestore().collection("users")
       .where("email", "==", email)
       .limit(1)
@@ -112,13 +158,35 @@ exports.verifyOtp = functions.https.onCall(async (data, context) => {
 
     if (!userQuery.empty) {
       const userDoc = userQuery.docs[0];
-      await userDoc.ref.update({ otpVerified: true });
+      await userDoc.ref.update({
+        otpVerified: true,
+        emailVerified: true
+      });
     }
 
-    await otpRef.delete();
+    // Also update if authenticated via Firebase Auth
+    if (context.auth && context.auth.uid) {
+      try {
+        await admin.auth().updateUser(context.auth.uid, { emailVerified: true });
+        await admin.firestore().collection("users").doc(context.auth.uid).update({
+          otpVerified: true,
+          emailVerified: true
+        });
+      } catch (authErr) {
+        console.warn("Could not update auth user emailVerified:", authErr.message);
+      }
+    }
+
     return { success: true, message: "Email verified successfully." };
   } else {
-    await otpRef.update({ attempts: otpData.attempts + 1 });
-    throw new functions.https.HttpsError("invalid-argument", "Invalid OTP code.");
+    const nextAttempts = (otpData.attempts || 0) + 1;
+    if (nextAttempts >= 3) {
+      await otpRef.delete();
+      throw new functions.https.HttpsError("permission-denied", "Incorrect code. Maximum attempts reached. Please request a new code.");
+    } else {
+      await otpRef.update({ attempts: nextAttempts });
+      const remaining = 3 - nextAttempts;
+      throw new functions.https.HttpsError("invalid-argument", `Invalid code. ${remaining} attempt${remaining > 1 ? "s" : ""} remaining.`);
+    }
   }
 });

@@ -258,6 +258,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       val res = chatRepo.acceptFriendRequest(requestId, me)
       if (res.isSuccess) {
         showToast("Friend request accepted! ✨")
+        authRepo.loadUserProfile(me.uid)
       } else {
         showToast("Failed to accept: ${res.exceptionOrNull()?.message}")
       }
@@ -376,18 +377,28 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     val projectId = FirebaseInitializer.diagnostic.value.projectId
 
     return when {
-      msg.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) || msg.contains("not found", ignoreCase = true) -> {
-        "SERVICE_NOT_FOUND: The authentication backend is not fully deployed for $projectId.\n\n" +
-        "Please ensure you have deployed the 'sendOtp' and 'verifyOtp' Cloud Functions using the Firebase CLI."
+      msg.contains("Email provider is not configured", ignoreCase = true) || msg.contains("failed-precondition", ignoreCase = true) -> {
+        "EMAIL_NOT_CONFIGURED: Please configure EMAIL_USER and EMAIL_PASS secrets via Firebase CLI:\n" +
+        "firebase functions:secrets:set EMAIL_PASS\n\nEnsure Firebase project is on the Blaze plan."
       }
-      msg.contains("resource-exhausted", ignoreCase = true) || msg.contains("cooldown", ignoreCase = true) -> {
-        "Please wait a few minutes before requesting another verification code."
+      msg.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) || (msg.contains("NOT_FOUND", ignoreCase = true) && msg.contains("FUNCTION", ignoreCase = true)) -> {
+        "SERVICE_NOT_FOUND: Cloud Functions 'sendOtp' and 'verifyOtp' are not deployed for $projectId.\n\n" +
+        "Run: firebase deploy --only functions"
       }
-      msg.contains("permission-denied", ignoreCase = true) || msg.contains("invalid code", ignoreCase = true) -> {
-        "Incorrect verification code. Please try again."
+      msg.contains("No verification request found", ignoreCase = true) -> {
+        "No active verification request found. Please request a new code."
+      }
+      msg.contains("resource-exhausted", ignoreCase = true) || msg.contains("cooldown", ignoreCase = true) || msg.contains("wait", ignoreCase = true) -> {
+        msg.ifEmpty { "Please wait a moment before requesting another verification code." }
       }
       msg.contains("deadline-exceeded", ignoreCase = true) || msg.contains("expired", ignoreCase = true) -> {
-        "This code has expired. Please request a new one."
+        "Verification code has expired (5-minute limit). Please request a new one."
+      }
+      msg.contains("Maximum attempts reached", ignoreCase = true) || msg.contains("Too many failed attempts", ignoreCase = true) -> {
+        "Maximum failed attempts reached. Code invalidated. Please request a new code."
+      }
+      msg.contains("Invalid code", ignoreCase = true) || msg.contains("permission-denied", ignoreCase = true) -> {
+        msg.ifEmpty { "Incorrect verification code. Please try again." }
       }
       msg.contains("DEVELOPER_ERROR", ignoreCase = true) -> {
         "DEVELOPER_ERROR: Check SHA-1 fingerprints and Google Sign-In configuration in Firebase Console ($projectId)."

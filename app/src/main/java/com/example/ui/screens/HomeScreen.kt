@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -94,6 +95,10 @@ import com.example.ui.components.GlassCard
 import com.example.ui.components.GlassIconButton
 import com.example.ui.components.GlassSearchBar
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.LiquidDropScreenTransition
+import com.example.ui.components.liquidDrop
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ripple
 import androidx.compose.ui.text.style.TextAlign
 import com.example.ui.theme.*
 import com.example.viewmodel.PinggoViewModel
@@ -157,18 +162,23 @@ fun HomeScreen(
           .fillMaxSize()
           .padding(innerPadding)
       ) {
-        when (selectedTab) {
-          "Chats" -> ChatsTab(
-            viewModel = viewModel,
-            onOpenChat = onOpenChat,
-            onOpenSearch = onOpenSearch,
-            onOpenCreateGroup = onOpenCreateGroup,
-            onOpenSettings = onOpenSettings,
-            onOpenNotifications = onOpenNotifications
-          )
-          "Calls" -> CallsTab(viewModel = viewModel, onOpenSearch = onOpenSearch)
-          "Updates" -> UpdatesTab(viewModel = viewModel)
-          "Profile" -> ProfileTab(viewModel = viewModel, onOpenSettings = onOpenSettings)
+        LiquidDropScreenTransition(
+          targetState = selectedTab,
+          durationMillis = 300
+        ) { tab ->
+          when (tab) {
+            "Chats" -> ChatsTab(
+              viewModel = viewModel,
+              onOpenChat = onOpenChat,
+              onOpenSearch = onOpenSearch,
+              onOpenCreateGroup = onOpenCreateGroup,
+              onOpenSettings = onOpenSettings,
+              onOpenNotifications = onOpenNotifications
+            )
+            "Calls" -> CallsTab(viewModel = viewModel, onOpenSearch = onOpenSearch)
+            "Updates" -> UpdatesTab(viewModel = viewModel)
+            "Profile" -> ProfileTab(viewModel = viewModel, onOpenSettings = onOpenSettings)
+          }
         }
       }
     }
@@ -182,11 +192,17 @@ fun HomeNavItem(
   isSelected: Boolean,
   onClick: () -> Unit
 ) {
+  val interactionSource = remember { MutableInteractionSource() }
+
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     modifier = Modifier
       .clip(RoundedCornerShape(20.dp))
-      .clickable { onClick() }
+      .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = 32.dp)
+      .clickable(
+        interactionSource = interactionSource,
+        indication = ripple(bounded = true, color = PinggoPinkPrimary)
+      ) { onClick() }
       .padding(horizontal = 14.dp, vertical = 4.dp)
       .testTag("nav_item_$label")
   ) {
@@ -234,9 +250,14 @@ fun ChatsTab(
 
   val myUid = currentUser?.uid ?: ""
 
-  val filteredConversations = remember(conversations, selectedFilter, searchQuery, myUid) {
+  val myFriends = currentUser?.friends ?: emptyList()
+
+  val filteredConversations = remember(conversations, selectedFilter, searchQuery, myUid, myFriends) {
     var list = when (selectedFilter) {
       "Unread" -> conversations.filter { (it.unreadCounts[myUid] ?: 0) > 0 }
+      "Friends" -> conversations.filter { conv ->
+        conv.type == "direct" && conv.participants.any { it != myUid && myFriends.contains(it) }
+      }
       "Groups" -> conversations.filter { it.type == "group" }
       else -> conversations
     }
@@ -272,12 +293,33 @@ fun ChatsTab(
       )
 
       Row(verticalAlignment = Alignment.CenterVertically) {
-        GlassIconButton(
-          icon = Icons.Default.Call,
-          contentDescription = "Calls",
-          onClick = onOpenSearch,
-          size = 40.dp
-        )
+        // Notification bell with unread badge
+        Box {
+          GlassIconButton(
+            icon = Icons.Default.Notifications,
+            contentDescription = "Notifications",
+            onClick = onOpenNotifications,
+            size = 40.dp
+          )
+          if (unreadNotifications > 0) {
+            Box(
+              modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 2.dp, y = (-2).dp)
+                .size(18.dp)
+                .clip(CircleShape)
+                .background(PinggoPinkPrimary),
+              contentAlignment = Alignment.Center
+            ) {
+              Text(
+                text = if (unreadNotifications > 99) "99+" else unreadNotifications.toString(),
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+              )
+            }
+          }
+        }
         Spacer(modifier = Modifier.width(8.dp))
         GlassIconButton(
           icon = Icons.Default.CameraAlt,
@@ -306,7 +348,7 @@ fun ChatsTab(
               }
             )
             DropdownMenuItem(
-              text = { Text("Search Users") },
+              text = { Text("Search Users / Add Friends") },
               leadingIcon = { Icon(Icons.Default.Search, null) },
               onClick = {
                 showMenu = false
@@ -314,11 +356,11 @@ fun ChatsTab(
               }
             )
             DropdownMenuItem(
-              text = { Text("Invite Friends") },
-              leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+              text = { Text("Notifications Inbox") },
+              leadingIcon = { Icon(Icons.Default.Notifications, null) },
               onClick = {
                 showMenu = false
-                // Logic will be implemented in a helper or directly here
+                onOpenNotifications()
               }
             )
             DropdownMenuItem(
@@ -343,20 +385,25 @@ fun ChatsTab(
       )
     }
 
-    // Filter pills matching Screen 4 ("All", "Unread", "Groups")
+    // Filter pills ("All", "Unread", "Friends", "Groups")
     LazyRow(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 20.dp, vertical = 6.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-      val filters = listOf("All", "Unread", "Groups")
+      val filters = listOf("All", "Unread", "Friends", "Groups")
       items(filters) { filter ->
         val isActive = selectedFilter == filter
+        val pillInteraction = remember { MutableInteractionSource() }
         Surface(
           modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .clickable { viewModel.setFilter(filter) },
+            .liquidDrop(interactionSource = pillInteraction, isPinkTint = !isActive, maxRadius = 32.dp)
+            .clickable(
+              interactionSource = pillInteraction,
+              indication = ripple(bounded = true, color = if (isActive) Color.White else PinggoPinkPrimary)
+            ) { viewModel.setFilter(filter) },
           shape = RoundedCornerShape(20.dp),
           color = if (isActive) PinggoPinkPrimary else Color.White.copy(alpha = 0.1f),
           border = androidx.compose.foundation.BorderStroke(
@@ -503,12 +550,17 @@ fun ChatsTab(
   }
 
     // Floating Add Username button near bottom-right corner
+    val addBtnInteraction = remember { MutableInteractionSource() }
     Surface(
       modifier = Modifier
         .align(Alignment.BottomEnd)
         .padding(end = 18.dp, bottom = 18.dp)
         .clip(RoundedCornerShape(26.dp))
-        .clickable { onOpenSearch() }
+        .liquidDrop(interactionSource = addBtnInteraction, isPinkTint = true, maxRadius = 40.dp)
+        .clickable(
+          interactionSource = addBtnInteraction,
+          indication = ripple(bounded = true, color = PinggoPinkPrimary)
+        ) { onOpenSearch() }
         .testTag("add_username_button"),
       shape = RoundedCornerShape(26.dp),
       color = Color.White,
@@ -911,10 +963,15 @@ fun UpdatesTab(viewModel: PinggoViewModel) {
               Spacer(modifier = Modifier.width(10.dp))
 
               // Real Status Seen Viewers Button
+              val viewersBtnInteraction = remember { MutableInteractionSource() }
               Surface(
                 modifier = Modifier
                   .clip(RoundedCornerShape(16.dp))
-                  .clickable {
+                  .liquidDrop(interactionSource = viewersBtnInteraction, isPinkTint = true, maxRadius = 28.dp)
+                  .clickable(
+                    interactionSource = viewersBtnInteraction,
+                    indication = ripple(bounded = true, color = PinggoPinkPrimary)
+                  ) {
                     viewingStatusViewersFor = myUpdate
                     isLoadingViewers = true
                     viewModel.loadStatusViewers(myUpdate.id) { list ->
@@ -1596,12 +1653,17 @@ fun EditProfileDialog(
           }
 
           // Camera badge button
+          val camBadgeInteraction = remember { MutableInteractionSource() }
           Box(
             modifier = Modifier
               .size(32.dp)
               .clip(CircleShape)
               .background(PinggoPinkPrimary)
-              .clickable {
+              .liquidDrop(interactionSource = camBadgeInteraction, isPinkTint = false, maxRadius = 20.dp)
+              .clickable(
+                interactionSource = camBadgeInteraction,
+                indication = ripple(bounded = false, color = Color.White)
+              ) {
                 photoPickerLauncher.launch(
                   PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                 )
@@ -1619,13 +1681,18 @@ fun EditProfileDialog(
         }
 
         Spacer(modifier = Modifier.height(6.dp))
+        val changeTextInteraction = remember { MutableInteractionSource() }
         Text(
           text = "Change Profile Picture",
           fontSize = 12.sp,
           color = PinggoMint,
           fontWeight = FontWeight.Medium,
           modifier = Modifier
-            .clickable {
+            .liquidDrop(interactionSource = changeTextInteraction, isPinkTint = true, maxRadius = 28.dp)
+            .clickable(
+              interactionSource = changeTextInteraction,
+              indication = ripple(bounded = false, color = PinggoPinkPrimary)
+            ) {
               photoPickerLauncher.launch(
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
               )
@@ -1777,7 +1844,7 @@ fun EditProfileDialog(
   }
 }
 
-fun formatTimestamp(millis: Long): String {
+private fun formatTimestamp(millis: Long): String {
   if (millis <= 0) return ""
   val now = System.currentTimeMillis()
   val diff = now - millis

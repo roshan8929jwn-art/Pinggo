@@ -122,5 +122,57 @@ class ExampleRobolectricTest {
     assertEquals("sarah_c", viewer.username)
     assertEquals("Sarah Connor", viewer.displayName)
   }
+
+  @Test
+  fun `friend request model serialization and deserialization`() {
+    val req = com.example.model.FriendRequest(
+      id = "u1_u2",
+      senderId = "u1",
+      senderName = "Alice",
+      senderUsername = "Alice_W",
+      senderPhoto = "https://example.com/alice.jpg",
+      receiverId = "u2",
+      status = "pending",
+      timestamp = 1700000000000L
+    )
+    val map = req.toMap()
+    val restored = com.example.model.FriendRequest.fromMap("u1_u2", map)
+    assertEquals("u1_u2", restored.id)
+    assertEquals("u1", restored.senderId)
+    assertEquals("u2", restored.receiverId)
+    assertEquals("pending", restored.status)
+    assertEquals("Alice", restored.senderName)
+  }
+
+  @Test
+  fun `notification model serialization and deserialization`() {
+    val notif = com.example.model.Notification(
+      id = "notif_123",
+      recipientId = "u2",
+      senderId = "u1",
+      senderName = "Alice",
+      senderUsername = "Alice_W",
+      type = "friend_request",
+      content = "Alice sent you a friend request",
+      timestamp = 1700000000000L,
+      isRead = false,
+      relatedId = "u1_u2"
+    )
+    val map = notif.toMap()
+    val restored = com.example.model.Notification.fromMap("notif_123", map)
+    assertEquals("notif_123", restored.id)
+    assertEquals("u2", restored.recipientId)
+    assertEquals("friend_request", restored.type)
+    assertFalse(restored.isRead)
+  }
+
+  @Test
+  fun `username normalization and case preservation`() {
+    val input = "  @CoolUser_99  "
+    val display = input.trim().removePrefix("@")
+    val clean = display.lowercase()
+    assertEquals("CoolUser_99", display)
+    assertEquals("cooluser_99", clean)
+  }
 }
 

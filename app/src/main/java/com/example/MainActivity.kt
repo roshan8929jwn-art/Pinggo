@@ -19,6 +19,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import kotlinx.coroutines.launch
@@ -34,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.example.ui.components.GlassToast
+import com.example.ui.components.LiquidDropScreenTransition
 import com.example.ui.screens.CallScreen
 import com.example.ui.screens.ChatScreen
 import com.example.ui.screens.CreateGroupScreen
@@ -123,20 +126,69 @@ class MainActivity : ComponentActivity() {
         }
       }
 
-      PinggoTheme(
-        isDarkTheme = when (themeMode) {
-          AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-          AppThemeMode.LIGHT -> false
-          AppThemeMode.DARK -> true
-        },
-        glassDesign = glassDesign
+      val lastTapPosition = remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
+
+      androidx.compose.runtime.CompositionLocalProvider(
+        com.example.ui.components.LocalLastTapPosition provides lastTapPosition
       ) {
-        Surface(
-          modifier = Modifier.fillMaxSize(),
-          color = MaterialTheme.colorScheme.background
+        PinggoTheme(
+          isDarkTheme = when (themeMode) {
+            AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+            AppThemeMode.LIGHT -> false
+            AppThemeMode.DARK -> true
+          },
+          glassDesign = glassDesign
         ) {
-          Box(modifier = Modifier.fillMaxSize()) {
-            when (currentScreen) {
+          Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+          ) {
+            Box(
+              modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                  awaitPointerEventScope {
+                    while (true) {
+                      val event = awaitPointerEvent(PointerEventPass.Initial)
+                      val change = event.changes.firstOrNull()
+                      if (change != null && change.pressed) {
+                        lastTapPosition.value = change.position
+                      }
+                    }
+                  }
+                }
+            ) {
+              var lastScreen by remember { mutableStateOf(currentScreen) }
+              val isBack = remember(currentScreen, lastScreen) {
+                val screenDepth = mapOf(
+                  PinggoScreen.SPLASH to 0,
+                  PinggoScreen.LOGIN to 1,
+                  PinggoScreen.SIGN_UP to 2,
+                  PinggoScreen.PASSWORD_LOGIN to 2,
+                  PinggoScreen.OTP_VERIFICATION to 2,
+                  PinggoScreen.PROFILE_SETUP to 2,
+                  PinggoScreen.DIAGNOSTIC to 2,
+                  PinggoScreen.HOME to 3,
+                  PinggoScreen.CHAT to 4,
+                  PinggoScreen.USER_SEARCH to 4,
+                  PinggoScreen.CREATE_GROUP to 4,
+                  PinggoScreen.SETTINGS to 4,
+                  PinggoScreen.NOTIFICATIONS to 4
+                )
+                val currDepth = screenDepth[currentScreen] ?: 3
+                val lastDepth = screenDepth[lastScreen] ?: 3
+                currDepth < lastDepth
+              }
+              LaunchedEffect(currentScreen) {
+                lastScreen = currentScreen
+              }
+
+              LiquidDropScreenTransition(
+                targetState = currentScreen,
+                isBackNavigation = isBack,
+                durationMillis = 340
+              ) { screen ->
+              when (screen) {
               PinggoScreen.SPLASH -> {
                 SplashScreen(
                   onReady = {
@@ -367,6 +419,7 @@ class MainActivity : ComponentActivity() {
                 )
               }
             }
+          }
 
             // Real-Time Active Call Screen Overlay
             activeCall?.let { call ->
@@ -392,6 +445,7 @@ class MainActivity : ComponentActivity() {
             }
           }
         }
+      }
       }
     }
   }

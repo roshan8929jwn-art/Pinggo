@@ -44,8 +44,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.remember
 import com.example.ui.components.GlassCard
 import com.example.ui.components.LiquidGlassBackground
+import com.example.ui.components.liquidDrop
 import com.example.ui.components.PinggoBubbleIcon
 import com.example.ui.components.PinggoFullLogo
 import com.example.ui.theme.AppThemeMode
@@ -75,7 +79,14 @@ fun SettingsScreen(
           .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+        val backInteraction = remember { MutableInteractionSource() }
+        IconButton(
+          onClick = onBack,
+          interactionSource = backInteraction,
+          modifier = Modifier
+            .size(40.dp)
+            .liquidDrop(interactionSource = backInteraction, isPinkTint = true, maxRadius = 22.dp)
+        ) {
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
@@ -544,10 +555,15 @@ fun GlassDesignOptionRow(
   selected: Boolean,
   onSelect: () -> Unit
 ) {
+  val rowInteraction = remember { MutableInteractionSource() }
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable { onSelect() }
+      .liquidDrop(interactionSource = rowInteraction, isPinkTint = true, maxRadius = 36.dp)
+      .clickable(
+        interactionSource = rowInteraction,
+        indication = ripple(bounded = true, color = PinggoPinkPrimary)
+      ) { onSelect() }
       .padding(horizontal = 8.dp, vertical = 10.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {
@@ -567,7 +583,7 @@ fun GlassDesignOptionRow(
     RadioButton(
       selected = selected,
       onClick = onSelect,
-      colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
+      colors = RadioButtonDefaults.colors(selectedColor = PinggoPinkPrimary)
     )
   }
 }
@@ -579,10 +595,15 @@ fun ThemeOptionRow(
   selected: Boolean,
   onSelect: () -> Unit
 ) {
+  val rowInteraction = remember { MutableInteractionSource() }
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable { onSelect() }
+      .liquidDrop(interactionSource = rowInteraction, isPinkTint = true, maxRadius = 36.dp)
+      .clickable(
+        interactionSource = rowInteraction,
+        indication = ripple(bounded = true, color = PinggoPinkPrimary)
+      ) { onSelect() }
       .padding(horizontal = 8.dp, vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {
