@@ -9,10 +9,11 @@ admin.initializeApp();
  * Creates nodemailer transport using environment variables or secrets
  */
 function getTransporter() {
-  const user = process.env.EMAIL_USER || process.env.GMAIL_EMAIL || "roshan8929jwn@gmail.com";
+  const user = process.env.EMAIL_USER || process.env.GMAIL_USER || process.env.GMAIL_EMAIL || "roshan8929jwn@gmail.com";
   const pass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
 
   if (!pass) {
+    console.error("CRITICAL: EMAIL_PASS or GMAIL_PASS secret not set in Firebase environment.");
     return null;
   }
 
@@ -189,4 +190,16 @@ exports.verifyOtp = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError("invalid-argument", `Invalid code. ${remaining} attempt${remaining > 1 ? "s" : ""} remaining.`);
     }
   }
+});
+
+/**
+ * ping: Simple connectivity test for Cloud Functions.
+ */
+exports.ping = functions.https.onCall(async (data, context) => {
+  return {
+    success: true,
+    message: "Pinggo Cloud Functions are online and reachable!",
+    timestamp: Date.now(),
+    projectId: process.env.GCLOUD_PROJECT || "gen-lang-client-0572544439"
+  };
 });

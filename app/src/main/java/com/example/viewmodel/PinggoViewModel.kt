@@ -138,6 +138,9 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private val _toastMessage = MutableStateFlow<String?>(null)
   val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
+  private val _pingResult = MutableStateFlow<String?>(null)
+  val pingResult: StateFlow<String?> = _pingResult.asStateFlow()
+
   private var conversationsJob: Job? = null
   private var messagesJob: Job? = null
   private var typingJob: Job? = null
@@ -411,7 +414,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
         "Network error. Please check your internet connection."
       }
       msg.contains("No credential available", ignoreCase = true) -> {
-        "Google Sign-In failed: No Google account found on this device."
+        "Google Sign-In failed: No Google account found on this device. If using an emulator, add a Google account in Settings."
       }
       else -> "${errorCode}${msg}".ifEmpty { "Error: ${err.javaClass.simpleName}" }
     }
@@ -671,18 +674,28 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun sendImageMessage(uri: Uri) {
     val conv = _activeConversation.value ?: return
+    sendImageToSpecificConversation(uri, conv.id)
+  }
+
+  fun sendImageToSpecificConversation(uri: Uri, conversationId: String, onComplete: (() -> Unit)? = null) {
     val user = userProfile.value ?: return
     viewModelScope.launch {
       showToast("Uploading photo...")
       val uploadRes = storageRepo.uploadImage(user.uid, uri)
       uploadRes.onSuccess { downloadUrl ->
-        chatRepo.sendMessage(
-          conversationId = conv.id,
+        val res = chatRepo.sendMessage(
+          conversationId = conversationId,
           sender = user,
           text = "Photo",
           type = "image",
           mediaUrl = downloadUrl
         )
+        if (res.isSuccess) {
+            showToast("Photo sent! 📸")
+            onComplete?.invoke()
+        } else {
+            showToast("Failed to send message")
+        }
       }.onFailure {
         showToast("Failed to upload image")
       }
@@ -1052,6 +1065,18 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       } else {
         _authError.value = formatAuthError(res.exceptionOrNull() ?: Exception("Verification failed"))
         onResult(false)
+      }
+    }
+  }
+
+  fun pingFunctions() {
+    viewModelScope.launch {
+      _pingResult.value = "Pinging..."
+      val result = authRepo.pingFunctions()
+      result.onSuccess { msg ->
+        _pingResult.value = "Success: $msg"
+      }.onFailure { err ->
+        _pingResult.value = "Failed: ${err.message}"
       }
     }
   }

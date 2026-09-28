@@ -736,6 +736,19 @@ class FirebaseAuthRepository(private val context: Context) {
     }
   }
 
+  suspend fun pingFunctions(): Result<String> {
+    val f = functions ?: return Result.failure(IllegalStateException("Firebase Functions not ready"))
+    return try {
+      val result = f.getHttpsCallable("ping").call().await()
+      val data = result.data as? Map<*, *>
+      val message = data?.get("message") as? String ?: "No message received"
+      Result.success(message)
+    } catch (e: Exception) {
+      Log.e("FirebaseAuthRepo", "pingFunctions failed", e)
+      Result.failure(e)
+    }
+  }
+
   suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
     val a = auth ?: return Result.failure(IllegalStateException("Firebase Auth not ready"))
     return try {

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
@@ -32,7 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,11 +53,13 @@ import com.example.util.FirebaseDiagnosticInfo
 
 @Composable
 fun FirebaseDiagnosticScreen(
+  viewModel: com.example.viewmodel.PinggoViewModel,
   diagnostic: FirebaseDiagnosticInfo,
   onRetry: () -> Unit,
   onContinueOffline: () -> Unit
 ) {
   val scrollState = rememberScrollState()
+  val pingResult by viewModel.pingResult.collectAsState()
 
   LiquidGlassBackground {
     Column(
@@ -114,6 +119,67 @@ fun FirebaseDiagnosticScreen(
 
       Spacer(modifier = Modifier.height(20.dp))
 
+      // Connectivity Test Card
+      Box(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(20.dp))
+          .background(Color.White.copy(alpha = 0.08f))
+          .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+          .padding(18.dp)
+      ) {
+        Column {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              imageVector = Icons.Default.CloudDone,
+              contentDescription = null,
+              tint = PinggoPinkPrimary,
+              modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+              text = "Cloud Functions Test",
+              color = MaterialTheme.colorScheme.onBackground,
+              fontWeight = FontWeight.SemiBold,
+              fontSize = 15.sp
+            )
+          }
+          Spacer(modifier = Modifier.height(12.dp))
+          Text(
+            text = "Test if your Cloud Functions (OTP) are deployed and reachable.",
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 13.sp
+          )
+          Spacer(modifier = Modifier.height(14.dp))
+          
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Button(
+              onClick = { viewModel.pingFunctions() },
+              modifier = Modifier.height(40.dp).weight(1f),
+              colors = ButtonDefaults.buttonColors(containerColor = PinggoPinkPrimary)
+            ) {
+              Text("Ping Functions", fontSize = 13.sp)
+            }
+            if (pingResult != null) {
+              val resultText = pingResult ?: ""
+              Spacer(modifier = Modifier.width(12.dp))
+              Text(
+                text = resultText,
+                color = if (resultText.contains("Success")) PinggoMint else Color(0xFFEF4444),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1.5f)
+              )
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(20.dp))
+
       // Service Status Cards
       Column(
         modifier = Modifier
@@ -165,27 +231,6 @@ fun FirebaseDiagnosticScreen(
           isOk = diagnostic.isStorageAvailable,
           details = diagnostic.storageBucket.ifEmpty { "gen-lang-client-0572544439.firebasestorage.app" }
         )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        val testWebClientId = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
-        com.example.ui.components.GlassInput(
-          value = testWebClientId.value,
-          onValueChange = { testWebClientId.value = it },
-          placeholder = "Test Web Client ID (for Google Sign-In)",
-          leadingIcon = Icons.Default.Info
-        )
-        
-        Button(
-           onClick = { 
-             // We can't easily change the global config, but we can tell the repo to use this one for the next sign in attempt
-             // This is mostly for the user to verify their ID works
-           },
-           modifier = Modifier.fillMaxWidth().height(40.dp),
-           colors = ButtonDefaults.buttonColors(containerColor = PinggoPinkPrimary)
-        ) {
-           Text("Verify Web Client ID", fontSize = 13.sp)
-        }
       }
 
       // Error / Diagnostics Log (if any error reported)
@@ -271,20 +316,20 @@ fun FirebaseDiagnosticScreen(
 
           GuideStep(
             number = "2",
-            title = "Cloud Firestore Database",
-            description = "In Firebase Console > Firestore Database, create database and ensure rules permit authenticated reads and writes."
+            title = "Cloud Functions & Blaze Plan",
+            description = "Ensure project is on Blaze Plan. Then run: firebase deploy --only functions"
           )
 
           GuideStep(
             number = "3",
-            title = "Cloud Storage",
-            description = "In Firebase Console > Storage, get started with the default bucket for voice notes & media."
+            title = "Email Secrets (REQUIRED)",
+            description = "Run: firebase functions:secrets:set EMAIL_PASS. Use a Gmail App Password if using Gmail."
           )
 
           GuideStep(
             number = "4",
             title = "SHA-1 Fingerprint",
-            description = "In Firebase Console > Project Settings, ensure the SHA-1 of your signing key is added."
+            description = "Copy the SHA-1 below and add it to your Android App in Firebase Project Settings."
           )
 
           GuideStep(
@@ -326,6 +371,51 @@ fun FirebaseDiagnosticScreen(
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             fontSize = 11.sp,
             fontFamily = FontFamily.Monospace
+          )
+
+          Spacer(modifier = Modifier.height(4.dp))
+
+          val context = androidx.compose.ui.platform.LocalContext.current
+          val sha1 = remember { 
+            try {
+               val signatures = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                   context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.signingCertificateHistory
+               } else {
+                   @Suppress("DEPRECATION")
+                   context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNATURES).signatures
+               }
+               val firstSig = signatures?.getOrNull(0)
+               if (firstSig != null) {
+                 val md = java.security.MessageDigest.getInstance("SHA-1")
+                 val digest = md.digest(firstSig.toByteArray())
+                 digest.joinToString(":") { String.format("%02X", it) }
+               } else {
+                 "No signatures found"
+               }
+            } catch (e: Exception) { "Could not retrieve SHA-1: ${e.message}" }
+          }
+
+          Text(
+            text = "SHA-1 Fingerprint:",
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp
+          )
+          
+          SelectionContainer {
+            Text(
+              text = sha1,
+              color = PinggoPinkPrimary,
+              fontSize = 12.sp,
+              fontFamily = FontFamily.Monospace
+            )
+          }
+          
+          Spacer(modifier = Modifier.height(8.dp))
+          Text(
+            text = "Add this SHA-1 to Firebase Console > Project Settings > Your App > Add Fingerprint.",
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 11.sp
           )
         }
       }

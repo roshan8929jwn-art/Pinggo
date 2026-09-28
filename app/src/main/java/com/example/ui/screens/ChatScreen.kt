@@ -98,20 +98,20 @@ fun ChatScreen(
         .fillMaxSize()
         .statusBarsPadding()
     ) {
-      // Liquid Glass Header
+      // Liquid Glass Header (Matched to Bottom Composer)
       Surface(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(horizontal = 14.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = Color.White.copy(alpha = 0.6f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.9f)),
-        shadowElevation = 3.dp
+          .padding(horizontal = 14.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(32.dp),
+        color = Color.White.copy(alpha = 0.7f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.95f)),
+        shadowElevation = 4.dp
       ) {
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 6.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
           val backInteraction = remember { MutableInteractionSource() }
@@ -207,9 +207,10 @@ fun ChatScreen(
                 tint = LightPrimaryText
               )
             }
-            GlassDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-              DropdownMenuItem(
-                text = { Text("Block User", color = LightPrimaryText) },
+            LiquidBlurDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+              LiquidBlurDropdownMenuItem(
+                text = "Block User",
+                icon = Icons.Default.Block,
                 onClick = {
                   showMenu = false
                   if (otherParticipant != null) {
@@ -217,8 +218,9 @@ fun ChatScreen(
                   }
                 }
               )
-              DropdownMenuItem(
-                text = { Text("Report User", color = LightPrimaryText) },
+              LiquidBlurDropdownMenuItem(
+                text = "Report User",
+                icon = Icons.Default.Report,
                 onClick = {
                   showMenu = false
                   if (otherParticipant != null) {

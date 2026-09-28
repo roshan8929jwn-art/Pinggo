@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.Canvas
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
@@ -666,41 +668,150 @@ fun GlassBottomBar(
 }
 
 /**
+ * Reusable LiquidBlurDropdownMenu.
+ * REDESIGNED: Premium iOS-style Liquid Blur floating menu.
+ * High-translucency frosted surface with subtle pink tint and strong rounded corners.
+ */
+@Composable
+fun LiquidBlurDropdownMenu(
+  expanded: Boolean,
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
+  offset: DpOffset = DpOffset(0.dp, 8.dp),
+  content: @Composable ColumnScope.() -> Unit
+) {
+  val transition = updateTransition(expanded, label = "LiquidBlurMenuTransition")
+  
+  val scale by transition.animateFloat(
+    transitionSpec = {
+      if (false isTransitioningTo true) {
+        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
+      } else {
+        tween(durationMillis = 200, easing = FastOutSlowInEasing)
+      }
+    },
+    label = "scale"
+  ) { if (it) 1f else 0.85f }
+
+  val alphaTransition by transition.animateFloat(
+    transitionSpec = {
+      if (false isTransitioningTo true) {
+        tween(durationMillis = 250)
+      } else {
+        tween(durationMillis = 150)
+      }
+    },
+    label = "alpha"
+  ) { if (it) 1f else 0f }
+
+  if (expanded || transition.currentState) {
+    DropdownMenu(
+      expanded = expanded,
+      onDismissRequest = onDismissRequest,
+      modifier = modifier
+        .widthIn(min = 230.dp)
+        .padding(horizontal = 12.dp)
+        .graphicsLayer {
+          scaleX = scale
+          scaleY = scale
+          this.alpha = alphaTransition
+          clip = true
+          shape = RoundedCornerShape(32.dp)
+        },
+      offset = offset,
+      containerColor = Color.Transparent,
+      scrollState = rememberScrollState(),
+      properties = PopupProperties(focusable = true)
+    ) {
+      Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        color = Color.White.copy(alpha = 0.88f), // High alpha for frosted look
+        shadowElevation = 20.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.5f))
+      ) {
+        // Subtle Pink Blur Layer (Tint)
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(PinggoPinkPrimary.copy(alpha = 0.04f))
+            .padding(vertical = 12.dp, horizontal = 4.dp)
+        ) {
+          Column {
+            content()
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Custom Menu Item for Liquid Blur Menu with subtle pink pressed state.
+ */
+@Composable
+fun LiquidBlurDropdownMenuItem(
+  text: String,
+  icon: ImageVector,
+  onClick: () -> Unit
+) {
+  val interactionSource = remember { MutableInteractionSource() }
+  
+  Surface(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 4.dp, vertical = 2.dp)
+      .clip(RoundedCornerShape(20.dp))
+      .clickable(
+        interactionSource = interactionSource,
+        indication = ripple(color = PinggoPinkPrimary),
+        onClick = onClick
+      ),
+    color = Color.Transparent
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = Color(0xFF1C1C1E), // Dark iOS style text color
+        modifier = Modifier.size(22.dp)
+      )
+      Spacer(modifier = Modifier.width(14.dp))
+      Text(
+        text = text,
+        color = Color(0xFF1C1C1E),
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium
+      )
+    }
+  }
+}
+
+/**
  * Reusable GlassDropdownMenu.
+ * @deprecated Use LiquidBlurDropdownMenu instead for iOS style.
  */
 @Composable
 fun GlassDropdownMenu(
   expanded: Boolean,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
-  offset: DpOffset = DpOffset(0.dp, 0.dp),
+  offset: DpOffset = DpOffset(0.dp, 4.dp),
   content: @Composable ColumnScope.() -> Unit
 ) {
-  MaterialTheme(
-    colorScheme = MaterialTheme.colorScheme.copy(
-      surface = Color.Transparent,
-      onSurface = LightPrimaryText
-    )
-  ) {
-    DropdownMenu(
-      expanded = expanded,
-      onDismissRequest = onDismissRequest,
-      modifier = modifier
-        .widthIn(min = 200.dp)
-        .padding(horizontal = 8.dp),
-      offset = offset,
-      scrollState = rememberScrollState()
-    ) {
-      GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
-      ) {
-        Column(modifier = Modifier.padding(vertical = 6.dp)) {
-          content()
-        }
-      }
-    }
-  }
+  LiquidBlurDropdownMenu(
+    expanded = expanded,
+    onDismissRequest = onDismissRequest,
+    modifier = modifier,
+    offset = offset,
+    content = content
+  )
 }
 
 /**

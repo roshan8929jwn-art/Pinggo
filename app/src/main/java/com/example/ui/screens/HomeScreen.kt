@@ -57,6 +57,7 @@ fun HomeScreen(
   onOpenCreateGroup: () -> Unit,
   onOpenSettings: (String) -> Unit,
   onOpenNotifications: () -> Unit,
+  onOpenCamera: () -> Unit,
   initialTab: String = "Chats"
 ) {
   var selectedTab by rememberSaveable { mutableStateOf(initialTab) } // "Chats", "Calls", "Updates", "Profile"
@@ -116,10 +117,11 @@ fun HomeScreen(
               onOpenSearch = onOpenSearch,
               onOpenCreateGroup = onOpenCreateGroup,
               onOpenSettings = onOpenSettings,
-              onOpenNotifications = onOpenNotifications
+              onOpenNotifications = onOpenNotifications,
+              onOpenCamera = onOpenCamera
             )
             "Calls" -> CallsTab(viewModel = viewModel, onOpenSearch = onOpenSearch)
-            "Updates" -> UpdatesTab(viewModel = viewModel)
+            "Updates" -> UpdatesTab(viewModel = viewModel, onOpenCamera = onOpenCamera)
             "Profile" -> ProfileTab(viewModel = viewModel, onOpenSettings = onOpenSettings)
           }
         }
@@ -180,7 +182,8 @@ fun ChatsTab(
   onOpenSearch: () -> Unit,
   onOpenCreateGroup: () -> Unit,
   onOpenSettings: (String) -> Unit,
-  onOpenNotifications: () -> Unit
+  onOpenNotifications: () -> Unit,
+  onOpenCamera: () -> Unit
 ) {
   val conversations by viewModel.conversations.collectAsState()
   val currentUser by viewModel.userProfile.collectAsState()
@@ -274,7 +277,7 @@ fun ChatsTab(
         GlassIconButton(
           icon = Icons.Default.CameraAlt,
           contentDescription = "Camera",
-          onClick = onOpenSearch,
+          onClick = onOpenCamera,
           size = 40.dp
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -286,37 +289,37 @@ fun ChatsTab(
             onClick = { showMenu = true },
             size = 40.dp
           )
-          GlassDropdownMenu(
+          LiquidBlurDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
           ) {
-            DropdownMenuItem(
-              text = { Text("New Group", color = LightPrimaryText) },
-              leadingIcon = { Icon(Icons.Default.Group, null, tint = LightPrimaryText) },
+            LiquidBlurDropdownMenuItem(
+              text = "New Group",
+              icon = Icons.Default.Group,
               onClick = {
                 showMenu = false
                 onOpenCreateGroup()
               }
             )
-            DropdownMenuItem(
-              text = { Text("Search Users", color = LightPrimaryText) },
-              leadingIcon = { Icon(Icons.Default.Search, null, tint = LightPrimaryText) },
+            LiquidBlurDropdownMenuItem(
+              text = "Search Users",
+              icon = Icons.Default.Search,
               onClick = {
                 showMenu = false
                 onOpenSearch()
               }
             )
-            DropdownMenuItem(
-              text = { Text("Notifications", color = LightPrimaryText) },
-              leadingIcon = { Icon(Icons.Default.Notifications, null, tint = LightPrimaryText) },
+            LiquidBlurDropdownMenuItem(
+              text = "Notifications",
+              icon = Icons.Default.Notifications,
               onClick = {
                 showMenu = false
                 onOpenNotifications()
               }
             )
-            DropdownMenuItem(
-              text = { Text("Settings", color = LightPrimaryText) },
-              leadingIcon = { Icon(Icons.Default.Settings, null, tint = LightPrimaryText) },
+            LiquidBlurDropdownMenuItem(
+              text = "Settings",
+              icon = Icons.Default.Settings,
               onClick = {
                 showMenu = false
                 onOpenSettings("general")
@@ -896,7 +899,7 @@ fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
 }
 
 @Composable
-fun UpdatesTab(viewModel: PinggoViewModel) {
+fun UpdatesTab(viewModel: PinggoViewModel, onOpenCamera: () -> Unit) {
   val user by viewModel.userProfile.collectAsState()
   val updates by viewModel.statusUpdates.collectAsState()
   var newStatusText by remember { mutableStateOf("") }

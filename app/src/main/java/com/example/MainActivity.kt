@@ -65,7 +65,8 @@ enum class PinggoScreen {
   SIGN_UP,
   PASSWORD_LOGIN,
   OTP_VERIFICATION,
-  NOTIFICATIONS
+  NOTIFICATIONS,
+  CAMERA
 }
 
 class MainActivity : ComponentActivity() {
@@ -173,7 +174,8 @@ class MainActivity : ComponentActivity() {
                   PinggoScreen.USER_SEARCH to 4,
                   PinggoScreen.CREATE_GROUP to 4,
                   PinggoScreen.SETTINGS to 4,
-                  PinggoScreen.NOTIFICATIONS to 4
+                  PinggoScreen.NOTIFICATIONS to 4,
+                  PinggoScreen.CAMERA to 5
                 )
                 val currDepth = screenDepth[currentScreen] ?: 3
                 val lastDepth = screenDepth[lastScreen] ?: 3
@@ -330,6 +332,9 @@ class MainActivity : ComponentActivity() {
                   },
                   onOpenNotifications = {
                     currentScreen = PinggoScreen.NOTIFICATIONS
+                  },
+                  onOpenCamera = {
+                    currentScreen = PinggoScreen.CAMERA
                   }
                 )
               }
@@ -408,6 +413,7 @@ class MainActivity : ComponentActivity() {
                   currentScreen = if (currentUser != null || isGuestMode) PinggoScreen.HOME else PinggoScreen.LOGIN
                 }
                 FirebaseDiagnosticScreen(
+                  viewModel = viewModel,
                   diagnostic = diagnostic,
                   onRetry = {
                     viewModel.retryFirebaseInitialization()
@@ -415,6 +421,19 @@ class MainActivity : ComponentActivity() {
                   onContinueOffline = {
                     viewModel.enterGuestMode()
                     currentScreen = PinggoScreen.HOME
+                  }
+                )
+              }
+
+              PinggoScreen.CAMERA -> {
+                BackHandler {
+                  currentScreen = PinggoScreen.HOME
+                }
+                com.example.ui.screens.CameraScreen(
+                  viewModel = viewModel,
+                  onBack = { currentScreen = PinggoScreen.HOME },
+                  onShared = { 
+                    currentScreen = PinggoScreen.HOME 
                   }
                 )
               }
