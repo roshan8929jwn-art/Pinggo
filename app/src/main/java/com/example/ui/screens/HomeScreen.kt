@@ -333,15 +333,27 @@ fun ChatsTab(
       modifier = Modifier.padding(top = 4.dp)
     ) {
       selectedConv?.let { conv ->
-        val isMuted = conv.mutedBy.contains(myUid)
+        val mutedUntil = conv.mutedUntil[myUid] ?: 0L
+        val isMuted = conv.mutedBy.contains(myUid) && (mutedUntil == -1L || mutedUntil > System.currentTimeMillis())
         val isPinned = conv.pinnedBy.contains(myUid)
 
         GlassActionToolbar(
           onClose = { selectedConv = null },
           title = "1 selected",
           actions = {
-            IconButton(onClick = { showMuteDurationPopup = true }) {
-              Icon(if (isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff, "Mute", tint = PinggoPinkPrimary)
+            IconButton(onClick = { 
+              if (isMuted) {
+                viewModel.unmuteConversation(conv.id)
+                selectedConv = null
+              } else {
+                showMuteDurationPopup = true 
+              }
+            }) {
+              Icon(
+                imageVector = if (isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff, 
+                contentDescription = if (isMuted) "Unmute" else "Mute", 
+                tint = PinggoPinkPrimary
+              )
             }
             IconButton(onClick = { showDeleteConfirmation = true }) {
               Icon(Icons.Default.Delete, "Delete", tint = PinggoPinkPrimary)
@@ -350,7 +362,11 @@ fun ChatsTab(
               viewModel.togglePinConversation(conv.id, !isPinned)
               selectedConv = null
             }) {
-              Icon(Icons.Default.PushPin, "Pin", tint = if (isPinned) PinggoPinkPrimary else LightPrimaryText)
+              Icon(
+                imageVector = Icons.Default.PushPin,
+                contentDescription = if (isPinned) "Unpin" else "Pin", 
+                tint = if (isPinned) PinggoPinkPrimary else LightPrimaryText
+              )
             }
           }
         )
@@ -446,7 +462,8 @@ fun ChatsTab(
           val unread = conv.unreadCounts[myUid] ?: 0
 
           val isSelected = selectedConv?.id == conv.id
-          val isMuted = conv.mutedBy.contains(myUid)
+          val mutedUntil = conv.mutedUntil[myUid] ?: 0L
+          val isMuted = conv.mutedBy.contains(myUid) && (mutedUntil == -1L || mutedUntil > System.currentTimeMillis())
           val isPinned = conv.pinnedBy.contains(myUid)
 
           GlassCard(
@@ -478,22 +495,6 @@ fun ChatsTab(
                   size = 52.dp,
                   isOnline = conv.type == "direct"
                 )
-                if (isPinned) {
-                   Box(
-                     modifier = Modifier
-                       .align(Alignment.TopStart)
-                       .offset(x = (-2).dp, y = (-2).dp)
-                       .size(18.dp)
-                       .clip(CircleShape)
-                       .background(Color.White)
-                       .padding(2.dp)
-                       .clip(CircleShape)
-                       .background(PinggoPinkPrimary),
-                     contentAlignment = Alignment.Center
-                   ) {
-                     Icon(Icons.Default.PushPin, null, tint = Color.White, modifier = Modifier.size(10.dp))
-                   }
-                }
               }
 
               Spacer(modifier = Modifier.width(14.dp))
@@ -513,15 +514,6 @@ fun ChatsTab(
                       maxLines = 1,
                       overflow = TextOverflow.Ellipsis
                     )
-                    if (isMuted) {
-                      Spacer(modifier = Modifier.width(4.dp))
-                      Icon(
-                        imageVector = Icons.Default.NotificationsOff,
-                        contentDescription = "Muted",
-                        tint = LightSecondaryText.copy(alpha = 0.5f),
-                        modifier = Modifier.size(14.dp)
-                      )
-                    }
                   }
                   Text(
                     text = formatTimestamp(conv.lastMessageTimestamp),
@@ -546,21 +538,42 @@ fun ChatsTab(
                     modifier = Modifier.weight(1f)
                   )
 
-                  if (unread > 0) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                      modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(UnreadBadgeColor),
-                      contentAlignment = Alignment.Center
-                    ) {
-                      Text(
-                        text = if (unread > 9) "9+" else unread.toString(),
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isMuted) {
+                      Icon(
+                        imageVector = Icons.Default.NotificationsOff,
+                        contentDescription = "Muted",
+                        tint = LightSecondaryText.copy(alpha = 0.5f),
+                        modifier = Modifier.size(14.dp)
                       )
+                      Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    
+                    if (isPinned) {
+                      Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint = PinggoPinkPrimary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(14.dp)
+                      )
+                      Spacer(modifier = Modifier.width(6.dp))
+                    }
+
+                    if (unread > 0) {
+                      Box(
+                        modifier = Modifier
+                          .size(20.dp)
+                          .clip(CircleShape)
+                          .background(UnreadBadgeColor),
+                        contentAlignment = Alignment.Center
+                      ) {
+                        Text(
+                          text = if (unread > 9) "9+" else unread.toString(),
+                          color = Color.White,
+                          fontSize = 10.sp,
+                          fontWeight = FontWeight.Bold
+                        )
+                      }
                     }
                   }
                 }

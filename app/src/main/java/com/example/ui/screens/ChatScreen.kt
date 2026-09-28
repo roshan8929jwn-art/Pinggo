@@ -85,11 +85,18 @@ fun ChatScreen(
   }
 
   LiquidGlassBackground {
+    val isKeyboardVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+    
+    LaunchedEffect(isKeyboardVisible) {
+      if (isKeyboardVisible && messages.isNotEmpty()) {
+        listState.animateScrollToItem(messages.size - 1)
+      }
+    }
+
     Column(
       modifier = Modifier
         .fillMaxSize()
         .statusBarsPadding()
-        .imePadding()
     ) {
       // Liquid Glass Header
       Surface(
@@ -346,6 +353,7 @@ fun ChatScreen(
       Surface(
         modifier = Modifier
           .fillMaxWidth()
+          .imePadding()
           .navigationBarsPadding()
           .padding(horizontal = 14.dp, vertical = 8.dp),
         shape = RoundedCornerShape(32.dp),

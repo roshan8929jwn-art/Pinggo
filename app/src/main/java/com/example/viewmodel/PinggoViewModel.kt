@@ -546,6 +546,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     }
     viewModelScope.launch {
       chatRepo.muteConversation(conversationId, userId, until)
+      showToast("Chat muted ${if (durationHours != null) "for $durationHours hours" else "permanently"}")
     }
   }
 
@@ -553,6 +554,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     val userId = currentUser.value?.uid ?: return
     viewModelScope.launch {
       chatRepo.muteConversation(conversationId, userId, 0L)
+      showToast("Chat unmuted")
     }
   }
 
