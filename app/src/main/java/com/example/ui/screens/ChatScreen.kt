@@ -51,7 +51,8 @@ fun ChatScreen(
   viewModel: PinggoViewModel,
   conversation: Conversation,
   onBack: () -> Unit,
-  onStartCall: (User, String) -> Unit
+  onStartCall: (User, String) -> Unit,
+  onOpenCamera: () -> Unit
 ) {
   val currentUser by viewModel.userProfile.collectAsState()
   val messages by viewModel.activeMessages.collectAsState()
@@ -195,6 +196,23 @@ fun ChatScreen(
               contentDescription = "Video Call",
               tint = PinggoPinkPrimary,
               modifier = Modifier.size(22.dp)
+            )
+          }
+
+          // Camera Icon
+          val chatCamInteraction = remember { MutableInteractionSource() }
+          IconButton(
+            onClick = onOpenCamera,
+            modifier = Modifier
+              .size(38.dp)
+              .liquidDrop(interactionSource = chatCamInteraction, isPinkTint = true, maxRadius = 22.dp),
+            interactionSource = chatCamInteraction
+          ) {
+            Icon(
+              imageVector = Icons.Default.CameraAlt,
+              contentDescription = "Camera",
+              tint = PinggoPinkPrimary,
+              modifier = Modifier.size(20.dp)
             )
           }
 
@@ -433,7 +451,7 @@ fun ChatScreen(
 
           val camInteraction = remember { MutableInteractionSource() }
           IconButton(
-            onClick = { imagePickerLauncher.launch("image/*") },
+            onClick = onOpenCamera,
             modifier = Modifier
               .size(34.dp)
               .liquidDrop(interactionSource = camInteraction, isPinkTint = true, maxRadius = 20.dp),
@@ -538,7 +556,7 @@ fun ChatScreen(
                 label = "Camera",
                 onClick = {
                   showMediaPicker = false
-                  imagePickerLauncher.launch("image/*")
+                  onOpenCamera()
                 }
               )
             }

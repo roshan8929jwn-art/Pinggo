@@ -73,32 +73,10 @@ fun HomeScreen(
     Scaffold(
       containerColor = Color.Transparent,
       bottomBar = {
-        GlassBottomBar {
-          HomeNavItem(
-            icon = Icons.Default.Chat,
-            label = "Chats",
-            isSelected = selectedTab == "Chats",
-            onClick = { selectedTab = "Chats" }
-          )
-          HomeNavItem(
-            icon = Icons.Default.Call,
-            label = "Calls",
-            isSelected = selectedTab == "Calls",
-            onClick = { selectedTab = "Calls" }
-          )
-          HomeNavItem(
-            icon = Icons.Default.CameraAlt,
-            label = "Updates",
-            isSelected = selectedTab == "Updates",
-            onClick = { selectedTab = "Updates" }
-          )
-          HomeNavItem(
-            icon = Icons.Default.Person,
-            label = "Profile",
-            isSelected = selectedTab == "Profile",
-            onClick = { selectedTab = "Profile" }
-          )
-        }
+        BlurCapsuleDock(
+          selectedTab = selectedTab,
+          onTabSelected = { selectedTab = it }
+        )
       }
     ) { innerPadding ->
       Box(
@@ -130,50 +108,6 @@ fun HomeScreen(
   }
 }
 
-@Composable
-fun HomeNavItem(
-  icon: ImageVector,
-  label: String,
-  isSelected: Boolean,
-  onClick: () -> Unit
-) {
-  val interactionSource = remember { MutableInteractionSource() }
-
-  Column(
-    horizontalAlignment = Alignment.CenterHorizontally,
-    modifier = Modifier
-      .clip(RoundedCornerShape(20.dp))
-      .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = 32.dp)
-      .clickable(
-        interactionSource = interactionSource,
-        indication = ripple(bounded = true, color = PinggoPinkPrimary)
-      ) { onClick() }
-      .padding(horizontal = 14.dp, vertical = 4.dp)
-      .testTag("nav_item_$label")
-  ) {
-    Box(
-      modifier = Modifier
-        .clip(RoundedCornerShape(16.dp))
-        .background(if (isSelected) PinggoPinkLight.copy(alpha = 0.3f) else Color.Transparent)
-        .padding(horizontal = 16.dp, vertical = 6.dp),
-      contentAlignment = Alignment.Center
-    ) {
-      Icon(
-        imageVector = icon,
-        contentDescription = label,
-        tint = if (isSelected) PinggoPinkPrimary else Color.Gray,
-        modifier = Modifier.size(22.dp)
-      )
-    }
-    Spacer(modifier = Modifier.height(2.dp))
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelSmall,
-      fontWeight = FontWeight.Bold,
-      color = if (isSelected) PinggoPinkPrimary else LightSecondaryText.copy(alpha = 0.8f)
-    )
-  }
-}
 
 @Composable
 fun ChatsTab(
@@ -405,11 +339,12 @@ fun ChatsTab(
               indication = ripple(bounded = true, color = PinggoPinkPrimary)
             ) { viewModel.setFilter(filter) },
           shape = RoundedCornerShape(20.dp),
-          color = if (isActive) PinggoPinkPrimary.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.45f),
+          color = if (isActive) PinggoPinkPrimary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.72f),
           border = androidx.compose.foundation.BorderStroke(
             0.5.dp,
-            if (isActive) PinggoPinkPrimary.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.7f)
-          )
+            if (isActive) PinggoPinkPrimary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+          ),
+          shadowElevation = if (isActive) 0.dp else 2.dp
         ) {
           Text(
             text = filter,
@@ -602,7 +537,7 @@ fun ChatsTab(
         ) { onOpenSearch() }
         .testTag("add_username_button"),
       shape = RoundedCornerShape(26.dp),
-      color = Color.White.copy(alpha = 0.5f),
+      color = Color.White.copy(alpha = 0.78f),
       border = androidx.compose.foundation.BorderStroke(0.5.dp, PinggoPinkPrimary.copy(alpha = 0.6f)),
       shadowElevation = 6.dp
     ) {
@@ -1484,7 +1419,7 @@ fun ProfileTab(
         text = "Profile",
         fontSize = 24.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.White
+        color = LightPrimaryText
       )
     }
 

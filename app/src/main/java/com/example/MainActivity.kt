@@ -364,6 +364,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onStartCall = { targetUser, callType ->
                       viewModel.startCall(targetUser, callType)
+                    },
+                    onOpenCamera = {
+                      currentScreen = PinggoScreen.CAMERA
                     }
                   )
                 } ?: run {

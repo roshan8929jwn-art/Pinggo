@@ -13,11 +13,11 @@ val PinggoWhite = Color(0xFFFFFFFF)
 val PinggoOffWhite = Color(0xFFF9F9F9)
 val PinggoBlack = Color(0xFF20212A) // Dark charcoal requested
 
-// Crystal Liquid Glass Redesign Colors
-val CrystalGlassSurface = Color(0x73FFFFFF) // 45% white
-val CrystalGlassBorder = Color(0xB3FFFFFF) // 70% white
-val CrystalGlassHighlight = Color(0x40FFFFFF) // 25% white
-val CrystalGlassShadow = Color(0x0D000000) // 5% black shadow
+// Frosted Glassmorphism Theme Colors
+val CrystalGlassSurface = Color(0xBFFFFFFF) // 75% white
+val CrystalGlassBorder = Color(0xD9FFFFFF) // 85% white
+val CrystalGlassHighlight = Color(0x33FFFFFF) // 20% white
+val CrystalGlassShadow = Color(0x0A000000) // 4% black shadow
 
 // Semantic Text Colors
 val LightPrimaryText = Color(0xFF20212A)
