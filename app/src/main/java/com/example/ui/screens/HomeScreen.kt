@@ -100,7 +100,10 @@ fun HomeScreen(
             )
             "Calls" -> CallsTab(viewModel = viewModel, onOpenSearch = onOpenSearch)
             "Updates" -> UpdatesTab(viewModel = viewModel, onOpenCamera = onOpenCamera)
-            "Profile" -> ProfileTab(viewModel = viewModel, onOpenSettings = onOpenSettings)
+            "Profile" -> ProfileTab(
+              viewModel = viewModel,
+              onOpenSettings = onOpenSettings
+            )
           }
         }
       }

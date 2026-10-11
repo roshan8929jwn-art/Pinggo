@@ -215,7 +215,7 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
         Text(
-          text = "\uD83D\uDEE0️ Diagnostics",
+          text = "🛠️ Diagnostics",
           style = MaterialTheme.typography.labelMedium,
           fontWeight = FontWeight.Bold,
           color = LightSecondaryText.copy(alpha = 0.7f),

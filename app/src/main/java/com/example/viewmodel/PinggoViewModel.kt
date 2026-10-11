@@ -34,7 +34,6 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   val chatRepo = FirestoreChatRepository()
   val storageRepo = FirebaseStorageRepository()
   val voiceHelper = VoiceRecorderHelper(application)
-
   val firebaseDiagnostic: StateFlow<FirebaseDiagnosticInfo> = FirebaseInitializer.diagnostic
 
   private val _isGuestMode = MutableStateFlow(false)

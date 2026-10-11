@@ -28,25 +28,29 @@ import com.example.ui.components.LiquidGlassBackground
 import com.example.ui.components.PinggoFullLogo
 import kotlinx.coroutines.delay
 
+import androidx.compose.foundation.clickable
+
 @Composable
 fun SplashScreen(
   onReady: () -> Unit
 ) {
-  val scale = remember { Animatable(0.5f) }
+  val scale = remember { Animatable(0.7f) }
 
   LaunchedEffect(Unit) {
     scale.animateTo(
       targetValue = 1f,
       animationSpec = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow
+        stiffness = Spring.StiffnessMedium
       )
     )
-    delay(1400)
+    delay(700)
     onReady()
   }
 
-  LiquidGlassBackground {
+  LiquidGlassBackground(
+    modifier = Modifier.clickable { onReady() }
+  ) {
     Box(
       modifier = Modifier.fillMaxSize(),
       contentAlignment = Alignment.Center

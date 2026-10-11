@@ -52,6 +52,40 @@
                     android:host="login" />
             </intent-filter>
         </activity>
+
+        <!-- Standalone Pinggo Admin Application Entry Point -->
+        <activity
+            android:name=".admin.AdminMainActivity"
+            android:exported="true"
+            android:label="Pinggo Admin"
+            android:icon="@drawable/ic_launcher_admin"
+            android:roundIcon="@drawable/ic_launcher_admin"
+            android:theme="@style/Theme.MyApplication"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep Link for Pinggo Admin -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="pinggo"
+                    android:host="admin" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="gen-lang-client-0572544439.firebaseapp.com"
+                    android:pathPrefix="/admin" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
