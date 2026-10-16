@@ -342,18 +342,18 @@ fun ChatsTab(
               indication = ripple(bounded = true, color = PinggoPinkPrimary)
             ) { viewModel.setFilter(filter) },
           shape = RoundedCornerShape(20.dp),
-          color = if (isActive) PinggoPinkPrimary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.72f),
+          color = if (isActive) PinggoPinkPrimary else SolidSurfaceWhite,
           border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            if (isActive) PinggoPinkPrimary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+            1.dp,
+            if (isActive) PinggoPinkPrimary else SolidBorderColor
           ),
-          shadowElevation = if (isActive) 0.dp else 2.dp
+          shadowElevation = if (isActive) 2.dp else 1.dp
         ) {
           Text(
             text = filter,
-            color = if (isActive) PinggoPinkPrimary else LightPrimaryText,
+            color = if (isActive) Color.White else LightPrimaryText,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
           )
         }
@@ -533,16 +533,15 @@ fun ChatsTab(
         .align(Alignment.BottomEnd)
         .padding(end = 18.dp, bottom = 18.dp)
         .clip(RoundedCornerShape(26.dp))
-        .liquidDrop(interactionSource = addBtnInteraction, isPinkTint = true, maxRadius = 40.dp)
         .clickable(
           interactionSource = addBtnInteraction,
-          indication = ripple(bounded = true, color = PinggoPinkPrimary)
+          indication = ripple(bounded = true, color = Color.White)
         ) { onOpenSearch() }
         .testTag("add_username_button"),
       shape = RoundedCornerShape(26.dp),
-      color = Color.White.copy(alpha = 0.78f),
-      border = androidx.compose.foundation.BorderStroke(0.5.dp, PinggoPinkPrimary.copy(alpha = 0.6f)),
-      shadowElevation = 6.dp
+      color = PinggoPinkPrimary,
+      border = androidx.compose.foundation.BorderStroke(1.dp, PinggoPinkDeep),
+      shadowElevation = 4.dp
     ) {
       Row(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -551,7 +550,7 @@ fun ChatsTab(
         Icon(
           imageVector = Icons.Default.PersonAdd,
           contentDescription = "Add Username",
-          tint = PinggoPinkPrimary,
+          tint = Color.White,
           modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -559,7 +558,7 @@ fun ChatsTab(
           text = "Add Username",
           style = MaterialTheme.typography.labelLarge,
           fontWeight = FontWeight.Bold,
-          color = PinggoPinkPrimary
+          color = Color.White
         )
       }
     }

@@ -26,19 +26,19 @@ val LocalGlassDesign = staticCompositionLocalOf { GlassDesign.CLEAR }
 private val LightColorScheme = lightColorScheme(
   primary = PinggoPinkPrimary,
   onPrimary = Color.White,
-  primaryContainer = PinggoPinkLight,
+  primaryContainer = PinggoPinkLight.copy(alpha = 0.25f),
   onPrimaryContainer = PinggoPinkDeep,
   secondary = PinggoPinkPrimary,
   onSecondary = Color.White,
   tertiary = PinggoPinkLight,
-  background = PinggoWhite,
+  background = PinggoOffWhite,
   onBackground = LightPrimaryText,
   surface = PinggoWhite,
   onSurface = LightPrimaryText,
-  surfaceVariant = PinggoOffWhite,
+  surfaceVariant = SolidSurfaceVariant,
   onSurfaceVariant = LightSecondaryText,
-  outline = LightSecondaryText.copy(alpha = 0.2f),
-  outlineVariant = LightSecondaryText.copy(alpha = 0.1f),
+  outline = SolidBorderColor,
+  outlineVariant = SolidBorderSubtle,
   error = DestructiveRed,
   onError = Color.White
 )
@@ -51,14 +51,14 @@ private val DarkColorScheme = darkColorScheme(
   secondary = PinggoPinkPrimary,
   onSecondary = Color.White,
   tertiary = PinggoPinkLight,
-  background = PinggoWhite, // Forced white
+  background = PinggoOffWhite,
   onBackground = DarkPrimaryText,
   surface = PinggoWhite,
   onSurface = DarkPrimaryText,
-  surfaceVariant = PinggoOffWhite,
+  surfaceVariant = SolidSurfaceVariant,
   onSurfaceVariant = DarkSecondaryText,
-  outline = DarkSecondaryText.copy(alpha = 0.2f),
-  outlineVariant = DarkSecondaryText.copy(alpha = 0.1f),
+  outline = SolidBorderColor,
+  outlineVariant = SolidBorderSubtle,
   error = DestructiveRed,
   onError = Color.White
 )

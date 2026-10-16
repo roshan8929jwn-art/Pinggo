@@ -123,9 +123,9 @@ fun FirebaseDiagnosticScreen(
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .clip(RoundedCornerShape(20.dp))
-          .background(Color.White.copy(alpha = 0.08f))
-          .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+          .clip(RoundedCornerShape(16.dp))
+          .background(SolidSurfaceWhite)
+          .border(1.dp, SolidBorderColor, RoundedCornerShape(16.dp))
           .padding(18.dp)
       ) {
         Column {
@@ -184,9 +184,9 @@ fun FirebaseDiagnosticScreen(
       Column(
         modifier = Modifier
           .fillMaxWidth()
-          .clip(RoundedCornerShape(20.dp))
-          .background(Color.White.copy(alpha = 0.06f))
-          .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+          .clip(RoundedCornerShape(16.dp))
+          .background(SolidSurfaceWhite)
+          .border(1.dp, SolidBorderColor, RoundedCornerShape(16.dp))
           .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
       ) {
@@ -286,9 +286,9 @@ fun FirebaseDiagnosticScreen(
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .clip(RoundedCornerShape(20.dp))
-          .background(Color.White.copy(alpha = 0.05f))
-          .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+          .clip(RoundedCornerShape(16.dp))
+          .background(SolidSurfaceWhite)
+          .border(1.dp, SolidBorderColor, RoundedCornerShape(16.dp))
           .padding(18.dp)
       ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -346,9 +346,9 @@ fun FirebaseDiagnosticScreen(
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .clip(RoundedCornerShape(20.dp))
-          .background(Color.White.copy(alpha = 0.05f))
-          .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+          .clip(RoundedCornerShape(16.dp))
+          .background(SolidSurfaceWhite)
+          .border(1.dp, SolidBorderColor, RoundedCornerShape(16.dp))
           .padding(18.dp)
       ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

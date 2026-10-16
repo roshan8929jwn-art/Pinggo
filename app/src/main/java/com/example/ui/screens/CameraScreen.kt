@@ -275,7 +275,7 @@ fun PhotoShareSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color.White.copy(alpha = 0.95f),
+        containerColor = SolidSurfaceWhite,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Color.LightGray) }
     ) {
         Column(

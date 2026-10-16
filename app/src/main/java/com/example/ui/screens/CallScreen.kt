@@ -112,14 +112,14 @@ fun CallScreen(
         modifier = Modifier.size(200.dp),
         contentAlignment = Alignment.Center
       ) {
-        // Outer glowing pulse ring
+        // Outer subtle pulse ring
         Box(
           modifier = Modifier
-            .size(190.dp)
+            .size(170.dp)
             .scale(pulseScale)
             .clip(CircleShape)
-            .background(Color(0x2210B981))
-            .border(2.dp, Color(0x4434D399), CircleShape)
+            .background(PinggoPinkLight.copy(alpha = 0.15f))
+            .border(1.dp, PinggoPinkPrimary.copy(alpha = 0.4f), CircleShape)
         )
         // Inner avatar
         GlassAvatar(
@@ -219,8 +219,8 @@ fun CallActionButton(
   isActive: Boolean = false,
   bgColor: Color? = null
 ) {
-  val background = bgColor ?: if (isActive) PinggoEmeraldPrimary else Color(0x33FFFFFF)
-  val iconColor = Color.White
+  val background = bgColor ?: if (isActive) PinggoPinkPrimary else SolidSurfaceVariant
+  val iconColor = if (bgColor != null || isActive) Color.White else LightPrimaryText
 
   Column(horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
@@ -228,7 +228,7 @@ fun CallActionButton(
         .size(56.dp)
         .clip(CircleShape)
         .background(background)
-        .border(1.dp, Color(0x40FFFFFF), CircleShape)
+        .border(1.dp, if (bgColor != null) Color.Transparent else SolidBorderColor, CircleShape)
         .clickable { onClick() },
       contentAlignment = Alignment.Center
     ) {

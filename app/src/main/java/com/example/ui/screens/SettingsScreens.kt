@@ -143,7 +143,7 @@ fun SettingsScreen(
           Spacer(modifier = Modifier.height(20.dp))
 
           Text(
-            text = "Glass Design",
+            text = "Surface Style",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
@@ -155,20 +155,20 @@ fun SettingsScreen(
           GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(8.dp)) {
               GlassDesignOptionRow(
-                title = "Clear Glass",
-                description = "Transparent frosted-glass surfaces",
+                title = "Clean Solid White",
+                description = "Crisp, modern solid-surface design",
                 selected = currentGlassDesign == com.example.ui.theme.GlassDesign.CLEAR,
                 onSelect = { viewModel.setGlassDesign(com.example.ui.theme.GlassDesign.CLEAR) }
               )
               GlassDesignOptionRow(
-                title = "Pink Glass",
-                description = "Soft pink translucent glass surfaces",
+                title = "Soft Pink Tint",
+                description = "Subtle Pinggo pink accent surfaces",
                 selected = currentGlassDesign == com.example.ui.theme.GlassDesign.PINK,
                 onSelect = { viewModel.setGlassDesign(com.example.ui.theme.GlassDesign.PINK) }
               )
               GlassDesignOptionRow(
-                title = "Crystal Glass",
-                description = "Clear crystal-inspired translucent surfaces",
+                title = "Minimal Pure",
+                description = "Ultra-clean solid surfaces with subtle borders",
                 selected = currentGlassDesign == com.example.ui.theme.GlassDesign.CRYSTAL,
                 onSelect = { viewModel.setGlassDesign(com.example.ui.theme.GlassDesign.CRYSTAL) }
               )
@@ -506,7 +506,7 @@ fun SettingsScreen(
               Text(
                 text = "Version 1.0.1 (Production Build)\n" +
                   "Backend: Google Cloud Firestore & Firebase Auth\n" +
-                  "Design System: Apple-inspired Liquid Glass\n" +
+                  "Design System: Modern Solid Surface UI\n" +
                   "Media: Firebase Storage Cloud Infrastructure\n" +
                   "Signaling: WebRTC Peer-to-Peer Calls",
                 fontSize = 13.sp,

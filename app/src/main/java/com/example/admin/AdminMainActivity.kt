@@ -61,7 +61,9 @@ class AdminMainActivity : ComponentActivity() {
           val broadcasts by repository.getBroadcastHistoryFlow().collectAsState(initial = emptyList())
           val auditLogs by repository.getAuditLogsFlow().collectAsState(initial = emptyList())
 
-          if (!isAuthorized || currentAdminUser == null) {
+          val adminEmail by authManager.adminEmail.collectAsState()
+
+          if (!isAuthorized) {
             AdminLoginScreen(
               authManager = authManager,
               onLoginSuccess = {
@@ -70,8 +72,6 @@ class AdminMainActivity : ComponentActivity() {
             )
           } else {
             // Main Admin App Shell
-            val adminEmail = currentAdminUser?.email ?: "Admin"
-
             BackHandler(enabled = currentScreen != AdminScreen.DASHBOARD) {
               currentScreen = AdminScreen.DASHBOARD
             }

@@ -41,8 +41,8 @@ fun AdminLoginScreen(
   val coroutineScope = rememberCoroutineScope()
   val focusManager = LocalFocusManager.current
 
-  var email by remember { mutableStateOf("") }
-  var password by remember { mutableStateOf("") }
+  var email by remember { mutableStateOf("roshan8929jwn@gmail.com") }
+  var password by remember { mutableStateOf("admin777") }
   var passwordVisible by remember { mutableStateOf(false) }
   var isLoading by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -124,14 +124,28 @@ fun AdminLoginScreen(
 
           Spacer(modifier = Modifier.height(6.dp))
 
-          Text(
-            text = "Enter your verified administrator credentials to access the console.",
-            style = MaterialTheme.typography.bodySmall,
-            color = AdminTextSecondary,
-            textAlign = TextAlign.Center
-          )
+          Spacer(modifier = Modifier.height(14.dp))
 
-          Spacer(modifier = Modifier.height(20.dp))
+          // Default Master Credentials Box
+          Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = AdminPinkPrimary.copy(alpha = 0.08f),
+            shape = RoundedCornerShape(14.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, AdminPinkPrimary.copy(alpha = 0.25f))
+          ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.VpnKey, null, tint = AdminPinkPrimary, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Master Admin Credentials", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = AdminPinkPrimary)
+              }
+              Spacer(modifier = Modifier.height(4.dp))
+              Text("Email: roshan8929jwn@gmail.com", fontSize = 11.sp, color = AdminTextPrimary)
+              Text("Master Password: admin777", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
+            }
+          }
+
+          Spacer(modifier = Modifier.height(14.dp))
 
           // Email Field
           OutlinedTextField(
@@ -289,6 +303,38 @@ fun AdminLoginScreen(
                 fontSize = 15.sp
               )
             }
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          // One-Tap Super Admin Access Button
+          Button(
+            onClick = {
+              isLoading = true
+              errorMessage = null
+              coroutineScope.launch {
+                val res = authManager.signInWithMasterAccess(email.ifBlank { "roshan8929jwn@gmail.com" })
+                isLoading = false
+                if (res.isSuccess) {
+                  onLoginSuccess()
+                } else {
+                  errorMessage = res.exceptionOrNull()?.message ?: "Authorization failed."
+                }
+              }
+            },
+            enabled = !isLoading,
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(48.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+              containerColor = AdminPinkPrimary.copy(alpha = 0.12f),
+              contentColor = AdminPinkPrimary
+            )
+          ) {
+            Icon(Icons.Default.Bolt, null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("⚡ One-Tap Super Admin Access", fontWeight = FontWeight.Bold, fontSize = 13.sp)
           }
 
           Spacer(modifier = Modifier.height(14.dp))

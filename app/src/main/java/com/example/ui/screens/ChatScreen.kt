@@ -104,10 +104,10 @@ fun ChatScreen(
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 14.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = Color.White.copy(alpha = 0.7f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.95f)),
-        shadowElevation = 4.dp
+        shape = RoundedCornerShape(20.dp),
+        color = SolidSurfaceWhite,
+        border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
+        shadowElevation = 2.dp
       ) {
         Row(
           modifier = Modifier
@@ -293,8 +293,8 @@ fun ChatScreen(
                     Column(
                       modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSent) PinggoPinkPrimary else Color.White.copy(alpha = 0.45f))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                        .background(if (isSent) PinggoPinkPrimary else SolidSurfaceWhite)
+                        .border(1.dp, if (isSent) Color.Transparent else SolidBorderColor, RoundedCornerShape(20.dp))
                         .padding(6.dp)
                     ) {
                       AsyncImage(
@@ -376,10 +376,10 @@ fun ChatScreen(
           .imePadding()
           .navigationBarsPadding()
           .padding(horizontal = 14.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = Color.White.copy(alpha = 0.7f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.95f)),
-        shadowElevation = 4.dp
+        shape = RoundedCornerShape(24.dp),
+        color = SolidSurfaceWhite,
+        border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
+        shadowElevation = 2.dp
       ) {
         Row(
           modifier = Modifier
@@ -603,7 +603,7 @@ fun ChatScreen(
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .background(Color.White.copy(alpha = 0.8f))
+          .background(SolidSurfaceWhite)
           .statusBarsPadding()
           .navigationBarsPadding()
           .padding(24.dp),
@@ -708,10 +708,9 @@ fun MediaTile(
     horizontalAlignment = Alignment.CenterHorizontally,
     modifier = Modifier
       .width(110.dp)
-      .clip(RoundedCornerShape(20.dp))
-      .background(Color.White.copy(alpha = 0.5f))
-      .border(0.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(20.dp))
-      .liquidDrop(interactionSource = tileInteraction, isPinkTint = true, maxRadius = 38.dp)
+      .clip(RoundedCornerShape(16.dp))
+      .background(SolidSurfaceWhite)
+      .border(1.dp, SolidBorderColor, RoundedCornerShape(16.dp))
       .clickable(
         interactionSource = tileInteraction,
         indication = ripple(bounded = true, color = PinggoPinkPrimary)
@@ -783,8 +782,8 @@ fun VoiceMessageBubble(
   Row(
     modifier = Modifier
       .clip(shape)
-      .background(if (isSent) PinggoPinkPrimary else Color.White.copy(alpha = 0.6f))
-      .border(0.5.dp, if (isSent) Color.Transparent else Color.White.copy(alpha = 0.9f), shape)
+      .background(if (isSent) PinggoPinkPrimary else SolidSurfaceWhite)
+      .border(1.dp, if (isSent) Color.Transparent else SolidBorderColor, shape)
       .padding(horizontal = 14.dp, vertical = 10.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {

@@ -1,16 +1,13 @@
 package com.example.ui.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -22,179 +19,109 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.PopupProperties
-import androidx.compose.foundation.Canvas
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
 
 /**
- * Dynamic Liquid Glass Background - Subtle Pastel Atmosphere.
- * Modern Glassmorphism: soft white / light pink / light blue tones, extremely gentle transitions,
- * with calm ambient diffused blur behind glass surfaces.
+ * Clean Modern Solid Surface Background.
+ * Replaces glassmorphism with a clean, calm, solid off-white canvas.
+ * No backdrop blur, no glowing orbs, no transparency effects.
  */
 @Composable
 fun LiquidGlassBackground(
   modifier: Modifier = Modifier,
   content: @Composable BoxScope.() -> Unit
 ) {
-  val backgroundBrush = Brush.verticalGradient(
-    colors = listOf(
-      Color(0xFFFAF8FB), // Soft subtle warm white top
-      Color(0xFFF7EFF5), // Whisper of delicate pastel pink
-      Color(0xFFF2F4F8), // Soft airy pastel sky blue
-      Color(0xFFF8F1F5), // Calm soft blush
-      Color(0xFFF4F6FA)  // Muted pastel mist bottom
-    )
-  )
-
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(backgroundBrush)
+      .background(PinggoOffWhite)
   ) {
-    // Subtle animated pastel refraction glows for blurred depth
-    val infiniteTransition = rememberInfiniteTransition(label = "refraction")
-    val orbOffset by infiniteTransition.animateFloat(
-      initialValue = 0f,
-      targetValue = 60f,
-      animationSpec = infiniteRepeatable(
-        animation = tween(12000, easing = LinearEasing),
-        repeatMode = RepeatMode.Reverse
-      ),
-      label = "orb"
-    )
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-      // Soft diffused pink ambient glow
-      drawCircle(
-        brush = Brush.radialGradient(
-          colors = listOf(Color(0xFFFFB6D9).copy(alpha = 0.18f), Color.Transparent),
-          center = Offset(size.width * 0.8f, size.height * 0.18f + orbOffset),
-          radius = size.width * 0.75f
-        )
-      )
-      // Soft diffused sky blue ambient glow
-      drawCircle(
-        brush = Brush.radialGradient(
-          colors = listOf(Color(0xFFD0E1F9).copy(alpha = 0.20f), Color.Transparent),
-          center = Offset(size.width * 0.15f, size.height * 0.82f - orbOffset),
-          radius = size.width * 0.7f
-        )
-      )
-      // Soft center warm blush
-      drawCircle(
-        brush = Brush.radialGradient(
-          colors = listOf(Color(0xFFFFE4E6).copy(alpha = 0.14f), Color.Transparent),
-          center = Offset(size.width * 0.5f, size.height * 0.5f),
-          radius = size.width * 0.6f
-        )
-      )
-    }
-
     content()
   }
 }
 
 /**
- * Reusable GlassContainer with frosted translucent glass surface.
- * PREMIUM: Frosted white surface, ultra-thin border, soft diffuse shadow, no plastic glare.
+ * Reusable Solid Surface Container.
+ * Pure solid white surface with clean subtle border and soft elevation.
  */
 @Composable
 fun GlassContainer(
   modifier: Modifier = Modifier,
-  shape: Shape = RoundedCornerShape(28.dp),
-  elevation: Dp = 4.dp,
-  animateModalReveal: Boolean = true,
+  shape: Shape = RoundedCornerShape(20.dp),
+  elevation: Dp = 1.dp,
+  animateModalReveal: Boolean = false,
   content: @Composable BoxScope.() -> Unit
 ) {
-  val surfaceColor = Color.White.copy(alpha = 0.72f) 
-  val borderColor = Color.White.copy(alpha = 0.85f)
-  val modalModifier = if (animateModalReveal) Modifier.liquidDropModalReveal(isPinkTint = true) else Modifier
-
-  Box(
-    modifier = modifier
-      .shadow(
-        elevation = elevation, 
-        shape = shape, 
-        ambientColor = Color(0x0A000000), 
-        spotColor = Color(0x0D000000)
-      )
-      .clip(shape)
-      .background(surfaceColor)
-      .then(modalModifier)
-      .border(0.5.dp, borderColor, shape)
+  Surface(
+    modifier = modifier,
+    shape = shape,
+    color = SolidSurfaceWhite,
+    border = BorderStroke(1.dp, SolidBorderColor),
+    shadowElevation = elevation
   ) {
-    content()
+    Box {
+      content()
+    }
   }
 }
 
 /**
- * Reusable GlassCard for lists and interactive cards.
- * PREMIUM: Frosted translucent surface, high text readability, smooth rounded corners.
+ * Reusable Solid Surface Card for lists and interactive cards.
+ * Clean solid white background, dark charcoal text, subtle border.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GlassCard(
   modifier: Modifier = Modifier,
-  shape: Shape = RoundedCornerShape(22.dp),
+  shape: Shape = RoundedCornerShape(16.dp),
   onClick: (() -> Unit)? = null,
   onLongClick: (() -> Unit)? = null,
   content: @Composable BoxScope.() -> Unit
 ) {
-  val surfaceColor = Color.White.copy(alpha = 0.70f)
-  val borderColor = Color.White.copy(alpha = 0.82f)
-  
   val interactionSource = remember { MutableInteractionSource() }
   val gestureModifier = if (onClick != null || onLongClick != null) {
-    Modifier
-      .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = 48.dp)
-      .combinedClickable(
-        interactionSource = interactionSource,
-        indication = ripple(bounded = true, color = PinggoPinkPrimary.copy(alpha = 0.2f)),
-        onClick = { onClick?.invoke() },
-        onLongClick = { onLongClick?.invoke() }
-      )
+    Modifier.combinedClickable(
+      interactionSource = interactionSource,
+      indication = ripple(bounded = true, color = PinggoPinkPrimary.copy(alpha = 0.12f)),
+      onClick = { onClick?.invoke() },
+      onLongClick = { onLongClick?.invoke() }
+    )
   } else Modifier
 
-  Box(
-    modifier = modifier
-      .shadow(
-        elevation = 2.dp,
-        shape = shape,
-        ambientColor = Color(0x08000000),
-        spotColor = Color(0x0A000000)
-      )
-      .clip(shape)
-      .background(surfaceColor)
-      .border(0.5.dp, borderColor, shape)
-      .then(gestureModifier)
+  Surface(
+    modifier = modifier.then(gestureModifier),
+    shape = shape,
+    color = SolidSurfaceWhite,
+    border = BorderStroke(1.dp, SolidBorderColor),
+    shadowElevation = 1.dp
   ) {
-    content()
+    Box {
+      content()
+    }
   }
 }
 
 /**
- * Reusable GlassButton.
- * REDESIGN: Vibrant branding for primary, Crystal Glass for secondary.
+ * Reusable Solid Button.
+ * Primary: Solid vibrant Pinggo Pink with high-contrast white text.
+ * Secondary: Clean solid neutral button with subtle border and dark text.
  */
 @Composable
 fun GlassButton(
@@ -205,52 +132,36 @@ fun GlassButton(
   icon: ImageVector? = null,
   isLoading: Boolean = false,
   enabled: Boolean = true,
-  shape: Shape = RoundedCornerShape(28.dp),
+  shape: Shape = RoundedCornerShape(16.dp),
   testTag: String = "glass_button"
 ) {
-  val backgroundBrush = if (isPrimary) {
-    Brush.horizontalGradient(listOf(PinggoPinkPrimary, PinggoPinkDeep))
-  } else {
-    Brush.verticalGradient(
-      listOf(
-        Color.White.copy(alpha = 0.78f),
-        Color.White.copy(alpha = 0.65f)
-      )
-    )
-  }
-
+  val backgroundColor = if (isPrimary) PinggoPinkPrimary else SolidSurfaceVariant
   val contentColor = if (isPrimary) Color.White else LightPrimaryText
-  val borderColor = if (isPrimary) Color.Transparent else Color.White.copy(alpha = 0.9f)
-
-  val interactionSource = remember { MutableInteractionSource() }
+  val borderColor = if (isPrimary) Color.Transparent else SolidBorderColor
 
   Surface(
     modifier = modifier
-      .heightIn(min = 54.dp)
+      .heightIn(min = 50.dp)
       .clip(shape)
       .testTag(testTag)
-      .liquidDrop(interactionSource = interactionSource, isPinkTint = !isPrimary, maxRadius = 52.dp)
       .clickable(
         enabled = enabled && !isLoading,
-        interactionSource = interactionSource,
-        indication = ripple(bounded = true, color = if(isPrimary) Color.White else PinggoPinkPrimary)
-      ) { onClick() },
+        onClick = onClick
+      ),
     shape = shape,
-    color = Color.Transparent,
-    border = BorderStroke(0.5.dp, borderColor),
-    shadowElevation = if (isPrimary) 6.dp else 2.dp
+    color = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
+    border = BorderStroke(1.dp, borderColor),
+    shadowElevation = if (isPrimary && enabled) 2.dp else 0.dp
   ) {
     Box(
-      modifier = Modifier
-        .background(backgroundBrush)
-        .padding(horizontal = 24.dp, vertical = 14.dp),
+      modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
       contentAlignment = Alignment.Center
     ) {
       if (isLoading) {
         CircularProgressIndicator(
-          modifier = Modifier.size(22.dp),
+          modifier = Modifier.size(20.dp),
           color = contentColor,
-          strokeWidth = 2.5.dp
+          strokeWidth = 2.dp
         )
       } else {
         Row(
@@ -262,15 +173,15 @@ fun GlassButton(
               imageVector = icon,
               contentDescription = null,
               tint = contentColor,
-              modifier = Modifier.size(22.dp)
+              modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
           }
           Text(
             text = text,
             color = contentColor,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.SemiBold
           )
         }
       }
@@ -279,7 +190,8 @@ fun GlassButton(
 }
 
 /**
- * Reusable GlassIconButton.
+ * Reusable Solid Icon Button.
+ * Clean circular white button with subtle border and crisp icon.
  */
 @Composable
 fun GlassIconButton(
@@ -288,41 +200,36 @@ fun GlassIconButton(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   tint: Color? = null,
-  size: Dp = 44.dp,
+  size: Dp = 42.dp,
   testTag: String = "glass_icon_button"
 ) {
   val iconTint = tint ?: LightPrimaryText
-  val surfaceColor = Color.White.copy(alpha = 0.72f)
-  val borderColor = Color.White.copy(alpha = 0.85f)
-  val interactionSource = remember { MutableInteractionSource() }
 
-  Box(
+  Surface(
     modifier = modifier
       .size(size)
-      .shadow(elevation = 2.dp, shape = CircleShape, ambientColor = Color(0x08000000), spotColor = Color(0x0A000000))
       .clip(CircleShape)
-      .background(surfaceColor)
-      .border(BorderStroke(0.5.dp, borderColor), CircleShape)
-      .liquidDrop(interactionSource = interactionSource, isPinkTint = true, maxRadius = (size / 2) + 6.dp)
-      .clickable(
-        interactionSource = interactionSource,
-        indication = ripple(bounded = false, color = PinggoPinkPrimary)
-      ) { onClick() }
+      .clickable(onClick = onClick)
       .testTag(testTag),
-    contentAlignment = Alignment.Center
+    shape = CircleShape,
+    color = SolidSurfaceWhite,
+    border = BorderStroke(1.dp, SolidBorderColor),
+    shadowElevation = 1.dp
   ) {
-    Icon(
-      imageVector = icon,
-      contentDescription = contentDescription,
-      tint = iconTint,
-      modifier = Modifier.size(22.dp)
-    )
+    Box(contentAlignment = Alignment.Center) {
+      Icon(
+        imageVector = icon,
+        contentDescription = contentDescription,
+        tint = iconTint,
+        modifier = Modifier.size(20.dp)
+      )
+    }
   }
 }
 
 /**
- * Reusable GlassSearchBar.
- * PREMIUM: Frosted glass pill with high contrast readability.
+ * Reusable Solid Search Bar.
+ * Clean solid white capsule shape, clear search icon, readable placeholder, subtle border.
  */
 @Composable
 fun GlassSearchBar(
@@ -332,49 +239,55 @@ fun GlassSearchBar(
   placeholder: String = "Search...",
   onClear: () -> Unit = { onQueryChange("") }
 ) {
-  val surfaceColor = Color.White.copy(alpha = 0.75f)
-  val borderColor = Color.White.copy(alpha = 0.85f)
-  val textColor = LightPrimaryText
-  val placeholderColor = LightSecondaryText
-
-  Box(
+  Surface(
     modifier = modifier
       .fillMaxWidth()
-      .height(50.dp)
-      .shadow(elevation = 2.dp, shape = RoundedCornerShape(25.dp), ambientColor = Color(0x08000000), spotColor = Color(0x0A000000))
-      .clip(RoundedCornerShape(25.dp))
-      .background(surfaceColor)
-      .border(BorderStroke(0.5.dp, borderColor), RoundedCornerShape(25.dp))
-      .padding(horizontal = 16.dp),
-    contentAlignment = Alignment.CenterStart
+      .height(48.dp),
+    shape = RoundedCornerShape(24.dp),
+    color = SolidSurfaceWhite,
+    border = BorderStroke(1.dp, SolidBorderColor),
+    shadowElevation = 1.dp
   ) {
     Row(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       Icon(
         imageVector = Icons.Default.Search,
         contentDescription = "Search",
-        tint = placeholderColor,
+        tint = LightPlaceholderText,
         modifier = Modifier.size(20.dp)
       )
-      Spacer(modifier = Modifier.width(12.dp))
+      Spacer(modifier = Modifier.width(10.dp))
       Box(modifier = Modifier.weight(1f)) {
         if (query.isEmpty()) {
-          Text(text = placeholder, color = placeholderColor, style = MaterialTheme.typography.bodyLarge)
+          Text(
+            text = placeholder,
+            color = LightPlaceholderText,
+            style = MaterialTheme.typography.bodyMedium
+          )
         }
         BasicTextField(
           value = query,
           onValueChange = onQueryChange,
           singleLine = true,
-          textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor),
+          textStyle = MaterialTheme.typography.bodyMedium.copy(color = LightPrimaryText),
           cursorBrush = SolidColor(PinggoPinkPrimary),
-          modifier = Modifier.fillMaxWidth().testTag("search_input")
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("search_input")
         )
       }
       if (query.isNotEmpty()) {
         IconButton(onClick = onClear, modifier = Modifier.size(28.dp)) {
-          Icon(Icons.Default.Clear, null, tint = placeholderColor, modifier = Modifier.size(18.dp))
+          Icon(
+            imageVector = Icons.Default.Clear,
+            contentDescription = "Clear",
+            tint = LightSecondaryText,
+            modifier = Modifier.size(18.dp)
+          )
         }
       }
     }
@@ -382,7 +295,8 @@ fun GlassSearchBar(
 }
 
 /**
- * Reusable GlassInput.
+ * Reusable Solid Input Field.
+ * Clean solid white background, rounded corners, subtle border, readable text.
  */
 @Composable
 fun GlassInput(
@@ -400,41 +314,35 @@ fun GlassInput(
   textAlign: TextAlign = TextAlign.Start,
   testTag: String = "glass_input"
 ) {
-  val surfaceColor = Color.White.copy(alpha = 0.72f)
-  val borderColor = Color.White.copy(alpha = 0.85f)
-  val textColor = LightPrimaryText
-  val placeholderColor = LightSecondaryText
-
-  Box(
-    modifier = modifier
-      .fillMaxWidth()
-      .shadow(elevation = 1.dp, shape = RoundedCornerShape(18.dp), ambientColor = Color(0x06000000), spotColor = Color(0x08000000))
-      .clip(RoundedCornerShape(18.dp))
-      .background(surfaceColor)
-      .border(0.5.dp, borderColor, RoundedCornerShape(18.dp))
-      .padding(horizontal = 16.dp, vertical = 14.dp),
-    contentAlignment = Alignment.CenterStart
+  Surface(
+    modifier = modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(14.dp),
+    color = SolidSurfaceWhite,
+    border = BorderStroke(1.dp, SolidBorderColor),
+    shadowElevation = 0.dp
   ) {
     Row(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 14.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       if (leadingIcon != null) {
         Icon(
           imageVector = leadingIcon,
           contentDescription = null,
-          tint = placeholderColor,
-          modifier = Modifier.size(22.dp)
+          tint = LightSecondaryText,
+          modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
       }
       Box(modifier = Modifier.weight(1f)) {
         if (value.isEmpty()) {
           Text(
-            text = placeholder, 
-            color = placeholderColor, 
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = textAlign, 
+            text = placeholder,
+            color = LightPlaceholderText,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = textAlign,
             modifier = Modifier.fillMaxWidth()
           )
         }
@@ -443,12 +351,17 @@ fun GlassInput(
           onValueChange = onValueChange,
           singleLine = singleLine,
           maxLines = maxLines,
-          textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor, textAlign = textAlign),
+          textStyle = MaterialTheme.typography.bodyMedium.copy(
+            color = LightPrimaryText,
+            textAlign = textAlign
+          ),
           keyboardOptions = keyboardOptions,
           keyboardActions = keyboardActions,
           visualTransformation = visualTransformation,
           cursorBrush = SolidColor(PinggoPinkPrimary),
-          modifier = Modifier.fillMaxWidth().testTag(testTag)
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
         )
       }
       if (trailingIcon != null) {
@@ -460,86 +373,82 @@ fun GlassInput(
 }
 
 /**
- * Reusable GlassAvatar.
+ * Reusable Solid Avatar.
+ * Clean circular avatar with solid border and crisp online status indicator.
  */
 @Composable
 fun GlassAvatar(
   photoUrl: String?,
   name: String,
   modifier: Modifier = Modifier,
-  size: Dp = 52.dp,
+  size: Dp = 50.dp,
   isOnline: Boolean = false,
   hasStatusUpdate: Boolean = false,
   onClick: (() -> Unit)? = null
 ) {
-  val borderBrush = if (hasStatusUpdate) {
-    Brush.sweepGradient(listOf(PinggoPinkPrimary, PinggoPinkLight, PinggoPinkPrimary))
-  } else {
-    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.Transparent))
-  }
-
-  val avatarInteraction = remember { MutableInteractionSource() }
   val clickableModifier = if (onClick != null) {
-    Modifier
-      .liquidDrop(interactionSource = avatarInteraction, isPinkTint = true, maxRadius = (size / 2) + 6.dp)
-      .clickable(
-        interactionSource = avatarInteraction,
-        indication = ripple(bounded = false, color = PinggoPinkPrimary)
-      ) { onClick() }
+    Modifier.clickable(onClick = onClick)
   } else Modifier
 
   Box(modifier = modifier.size(size).then(clickableModifier)) {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .clip(CircleShape)
-        .border(width = if (hasStatusUpdate) 2.5.dp else 1.dp, brush = borderBrush, shape = CircleShape)
-        .background(Color.White.copy(alpha = 0.3f)),
-      contentAlignment = Alignment.Center
+    Surface(
+      modifier = Modifier.fillMaxSize(),
+      shape = CircleShape,
+      color = SolidSurfaceVariant,
+      border = BorderStroke(
+        width = if (hasStatusUpdate) 2.dp else 1.dp,
+        color = if (hasStatusUpdate) PinggoPinkPrimary else SolidBorderColor
+      )
     ) {
-      if (!photoUrl.isNullOrEmpty()) {
-        AsyncImage(
-          model = photoUrl,
-          contentDescription = "$name's avatar",
-          modifier = Modifier.fillMaxSize(),
-          contentScale = ContentScale.Crop
-        )
-      } else {
-        val initials = name.trim().split(" ")
-          .filter { it.isNotEmpty() }
-          .mapNotNull { it.firstOrNull()?.toString() }
-          .take(2)
-          .joinToString("")
-          .uppercase()
-          .ifEmpty { "P" }
+      Box(contentAlignment = Alignment.Center) {
+        if (!photoUrl.isNullOrEmpty()) {
+          AsyncImage(
+            model = photoUrl,
+            contentDescription = "$name's avatar",
+            modifier = Modifier
+              .fillMaxSize()
+              .clip(CircleShape),
+            contentScale = ContentScale.Crop
+          )
+        } else {
+          val initials = name.trim().split(" ")
+            .filter { it.isNotEmpty() }
+            .mapNotNull { it.firstOrNull()?.toString() }
+            .take(2)
+            .joinToString("")
+            .uppercase()
+            .ifEmpty { "P" }
 
-        Text(
-          text = initials,
-          color = PinggoPinkPrimary,
-          fontSize = (size.value * 0.38f).sp,
-          fontWeight = FontWeight.Bold
-        )
+          Text(
+            text = initials,
+            color = PinggoPinkPrimary,
+            fontSize = (size.value * 0.38f).sp,
+            fontWeight = FontWeight.Bold
+          )
+        }
       }
     }
 
     if (isOnline) {
       Box(
         modifier = Modifier
-          .size(size * 0.3f)
+          .size(size * 0.28f)
           .align(Alignment.BottomEnd)
           .offset(x = 1.dp, y = 1.dp)
           .clip(CircleShape)
           .background(Color.White)
           .padding(2.dp)
           .clip(CircleShape)
-          .background(OnlinePink)
+          .background(OnlineGreen)
       )
     }
   }
 }
 
 /**
- * Reusable GlassChatBubble.
+ * Reusable Solid Chat Bubble.
+ * Outgoing: Solid Pinggo Pink with crisp white text.
+ * Incoming: Solid White with subtle gray border and dark charcoal text.
  */
 @Composable
 fun GlassChatBubble(
@@ -553,127 +462,116 @@ fun GlassChatBubble(
   replySender: String? = null
 ) {
   val bubbleShape = if (isSent) {
-    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 6.dp)
+    RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
   } else {
-    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 6.dp, bottomEnd = 20.dp)
+    RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
   }
 
-  val backgroundBrush = if (isSent) {
-    Brush.horizontalGradient(listOf(PinggoPinkPrimary, PinggoPinkDeep))
-  } else {
-    Brush.verticalGradient(
-      listOf(
-        Color.White.copy(alpha = 0.82f),
-        Color.White.copy(alpha = 0.72f)
-      )
-    )
-  }
-
+  val backgroundColor = if (isSent) PinggoPinkPrimary else SolidSurfaceWhite
   val textColor = if (isSent) Color.White else LightPrimaryText
-  val timeColor = if (isSent) Color.White.copy(alpha = 0.75f) else LightSecondaryText
-  val borderColor = if (isSent) Color.Transparent else Color.White.copy(alpha = 0.85f)
+  val timeColor = if (isSent) Color.White.copy(alpha = 0.8f) else LightSecondaryText
+  val borderStroke = if (isSent) null else BorderStroke(1.dp, SolidBorderColor)
 
-  Column(
-    modifier = modifier
-      .shadow(elevation = 2.dp, shape = bubbleShape)
-      .clip(bubbleShape)
-      .background(backgroundBrush)
-      .border(BorderStroke(0.5.dp, borderColor), bubbleShape)
-      .padding(horizontal = 14.dp, vertical = 10.dp)
+  Surface(
+    modifier = modifier,
+    shape = bubbleShape,
+    color = backgroundColor,
+    border = borderStroke,
+    shadowElevation = 1.dp
   ) {
-    if (!replySnippet.isNullOrEmpty()) {
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clip(RoundedCornerShape(8.dp))
-          .background(if(isSent) Color.Black.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f))
-          .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = 8.dp)
+    Column(
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+    ) {
+      if (!replySnippet.isNullOrEmpty()) {
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSent) Color.Black.copy(alpha = 0.12f) else SolidSurfaceVariant)
+            .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = 8.dp)
+        ) {
+          Column {
+            Text(
+              text = replySender ?: "Pinggo User",
+              color = if (isSent) Color.White else PinggoPinkPrimary,
+              style = MaterialTheme.typography.labelSmall,
+              fontWeight = FontWeight.Bold
+            )
+            Text(
+              text = replySnippet,
+              color = textColor.copy(alpha = 0.85f),
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+      }
+
+      Text(
+        text = text,
+        color = textColor,
+        style = MaterialTheme.typography.bodyMedium,
+        lineHeight = 21.sp
+      )
+
+      Spacer(modifier = Modifier.height(4.dp))
+
+      Row(
+        modifier = Modifier.align(Alignment.End),
+        verticalAlignment = Alignment.CenterVertically
       ) {
-        Column {
+        Text(
+          text = timestamp,
+          color = timeColor,
+          style = MaterialTheme.typography.labelSmall
+        )
+        if (isSent) {
+          Spacer(modifier = Modifier.width(4.dp))
           Text(
-            text = replySender ?: "Pinggo User",
-            color = if (isSent) PinggoPinkLight else PinggoPinkPrimary,
-            style = MaterialTheme.typography.labelSmall,
+            text = if (read) "✓✓" else if (delivered) "✓✓" else "✓",
+            color = if (read) Color(0xFFE0F2FE) else Color.White.copy(alpha = 0.85f),
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold
           )
-          Text(
-            text = replySnippet,
-            color = textColor.copy(alpha = 0.85f),
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-          )
         }
-      }
-      Spacer(modifier = Modifier.height(6.dp))
-    }
-
-    Text(
-      text = text,
-      color = textColor,
-      style = MaterialTheme.typography.bodyLarge,
-      lineHeight = 22.sp
-    )
-
-    Spacer(modifier = Modifier.height(4.dp))
-
-    Row(
-      modifier = Modifier.align(Alignment.End),
-      verticalAlignment = Alignment.CenterVertically
-    ) {
-      Text(text = timestamp, color = timeColor, style = MaterialTheme.typography.labelSmall)
-      if (isSent) {
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-          text = if (read) "✓✓" else if (delivered) "✓✓" else "✓",
-          color = if (read) Color(0xFF67E8F9) else Color.White.copy(alpha = 0.8f),
-          fontSize = 12.sp,
-          fontWeight = FontWeight.Bold
-        )
       }
     }
   }
 }
 
 /**
- * Reusable Floating GlassBottomBar.
+ * Reusable Solid Bottom Bar.
+ * Clean solid white bottom navigation dock.
  */
 @Composable
 fun GlassBottomBar(
   modifier: Modifier = Modifier,
   content: @Composable RowScope.() -> Unit
 ) {
-  val surfaceColor = Color.White.copy(alpha = 0.78f)
-
-  Box(
-    modifier = modifier
-      .fillMaxWidth()
-      .navigationBarsPadding()
-      .padding(horizontal = 20.dp, vertical = 10.dp)
+  Surface(
+    modifier = modifier.fillMaxWidth(),
+    color = SolidSurfaceWhite,
+    border = BorderStroke(0.5.dp, SolidBorderColor),
+    shadowElevation = 8.dp
   ) {
-    Surface(
-      shape = RoundedCornerShape(36.dp),
-      color = surfaceColor,
-      border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.8f)),
-      shadowElevation = 8.dp,
-      modifier = Modifier.fillMaxWidth()
-    ) {
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
-        content = content
-      )
-    }
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .navigationBarsPadding()
+        .padding(horizontal = 16.dp, vertical = 8.dp),
+      horizontalArrangement = Arrangement.SpaceAround,
+      verticalAlignment = Alignment.CenterVertically,
+      content = content
+    )
   }
 }
 
 /**
- * Reusable LiquidBlurDropdownMenu.
- * REDESIGNED: Premium iOS-style Liquid Blur floating menu.
- * High-translucency frosted surface with subtle pink tint and strong rounded corners.
+ * Reusable Solid Dropdown Menu.
+ * Clean solid white popup with high-contrast text and crisp icons.
+ * Completely opaque and readable on every screen.
  */
 @Composable
 fun LiquidBlurDropdownMenu(
@@ -683,75 +581,32 @@ fun LiquidBlurDropdownMenu(
   offset: DpOffset = DpOffset(0.dp, 8.dp),
   content: @Composable ColumnScope.() -> Unit
 ) {
-  val transition = updateTransition(expanded, label = "LiquidBlurMenuTransition")
-  
-  val scale by transition.animateFloat(
-    transitionSpec = {
-      if (false isTransitioningTo true) {
-        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
-      } else {
-        tween(durationMillis = 200, easing = FastOutSlowInEasing)
-      }
-    },
-    label = "scale"
-  ) { if (it) 1f else 0.85f }
-
-  val alphaTransition by transition.animateFloat(
-    transitionSpec = {
-      if (false isTransitioningTo true) {
-        tween(durationMillis = 250)
-      } else {
-        tween(durationMillis = 150)
-      }
-    },
-    label = "alpha"
-  ) { if (it) 1f else 0f }
-
-  if (expanded || transition.currentState) {
-    DropdownMenu(
-      expanded = expanded,
-      onDismissRequest = onDismissRequest,
-      modifier = modifier
-        .widthIn(min = 230.dp)
-        .padding(horizontal = 12.dp)
-        .graphicsLayer {
-          scaleX = scale
-          scaleY = scale
-          this.alpha = alphaTransition
-          clip = true
-          shape = RoundedCornerShape(32.dp)
-        },
-      offset = offset,
-      containerColor = Color.Transparent,
-      scrollState = rememberScrollState(),
-      properties = PopupProperties(focusable = true)
+  DropdownMenu(
+    expanded = expanded,
+    onDismissRequest = onDismissRequest,
+    modifier = modifier
+      .widthIn(min = 220.dp)
+      .background(SolidSurfaceWhite)
+      .border(1.dp, SolidBorderColor, RoundedCornerShape(16.dp)),
+    offset = offset,
+    containerColor = SolidSurfaceWhite,
+    shape = RoundedCornerShape(16.dp),
+    shadowElevation = 8.dp,
+    properties = PopupProperties(focusable = true)
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .background(SolidSurfaceWhite)
+        .padding(vertical = 4.dp)
     ) {
-      Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
-        color = Color.White.copy(alpha = 0.88f), // High alpha for frosted look
-        shadowElevation = 20.dp,
-        tonalElevation = 0.dp,
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.5f))
-      ) {
-        // Subtle Pink Blur Layer (Tint)
-        Box(
-          modifier = Modifier
-            .fillMaxWidth()
-            .background(PinggoPinkPrimary.copy(alpha = 0.04f))
-            .padding(vertical = 12.dp, horizontal = 4.dp)
-        ) {
-          Column {
-            content()
-          }
-        }
-      }
+      content()
     }
   }
 }
 
 /**
- * Custom Menu Item for Liquid Blur Menu with subtle pink pressed state.
+ * Custom Menu Item for Solid Dropdown Menu.
  */
 @Composable
 fun LiquidBlurDropdownMenuItem(
@@ -759,46 +614,32 @@ fun LiquidBlurDropdownMenuItem(
   icon: ImageVector,
   onClick: () -> Unit
 ) {
-  val interactionSource = remember { MutableInteractionSource() }
-  
-  Surface(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 4.dp, vertical = 2.dp)
-      .clip(RoundedCornerShape(20.dp))
-      .clickable(
-        interactionSource = interactionSource,
-        indication = ripple(color = PinggoPinkPrimary),
-        onClick = onClick
-      ),
-    color = Color.Transparent
-  ) {
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 14.dp),
-      verticalAlignment = Alignment.CenterVertically
-    ) {
+  DropdownMenuItem(
+    text = {
+      Text(
+        text = text,
+        color = LightPrimaryText,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium
+      )
+    },
+    leadingIcon = {
       Icon(
         imageVector = icon,
         contentDescription = null,
-        tint = Color(0xFF1C1C1E), // Dark iOS style text color
-        modifier = Modifier.size(22.dp)
+        tint = LightSecondaryText,
+        modifier = Modifier.size(20.dp)
       )
-      Spacer(modifier = Modifier.width(14.dp))
-      Text(
-        text = text,
-        color = Color(0xFF1C1C1E),
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium
-      )
-    }
-  }
+    },
+    onClick = onClick,
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 4.dp)
+  )
 }
 
 /**
- * Reusable GlassDropdownMenu.
- * @deprecated Use LiquidBlurDropdownMenu instead for iOS style.
+ * Reusable Dropdown Menu (Compatibility).
  */
 @Composable
 fun GlassDropdownMenu(
@@ -818,7 +659,8 @@ fun GlassDropdownMenu(
 }
 
 /**
- * Reusable GlassDialog.
+ * Reusable Solid Dialog.
+ * Clean solid white card dialog with dark charcoal text.
  */
 @Composable
 fun GlassDialog(
@@ -827,20 +669,24 @@ fun GlassDialog(
   content: @Composable BoxScope.() -> Unit
 ) {
   Dialog(onDismissRequest = onDismissRequest) {
-    GlassContainer(
+    Surface(
       modifier = modifier
-        .fillMaxWidth(0.9f)
+        .fillMaxWidth(0.92f)
         .wrapContentHeight(),
-      shape = RoundedCornerShape(32.dp),
-      elevation = 16.dp,
-      animateModalReveal = true,
-      content = content
-    )
+      shape = RoundedCornerShape(20.dp),
+      color = SolidSurfaceWhite,
+      border = BorderStroke(1.dp, SolidBorderColor),
+      shadowElevation = 8.dp
+    ) {
+      Box(modifier = Modifier.padding(20.dp)) {
+        content()
+      }
+    }
   }
 }
 
 /**
- * Premium Glass Action Toolbar.
+ * Solid Action Toolbar for selection states.
  */
 @Composable
 fun GlassActionToolbar(
@@ -852,16 +698,16 @@ fun GlassActionToolbar(
   Surface(
     modifier = modifier
       .fillMaxWidth()
-      .padding(horizontal = 14.dp, vertical = 8.dp),
-    shape = RoundedCornerShape(32.dp),
-    color = Color.White.copy(alpha = 0.7f),
-    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.9f)),
-    shadowElevation = 10.dp
+      .padding(horizontal = 16.dp, vertical = 6.dp),
+    shape = RoundedCornerShape(16.dp),
+    color = SolidSurfaceWhite,
+    border = BorderStroke(1.dp, SolidBorderColor),
+    shadowElevation = 4.dp
   ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 8.dp),
+        .padding(horizontal = 12.dp, vertical = 6.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -887,7 +733,7 @@ fun GlassActionToolbar(
 }
 
 /**
- * Reusable GlassToast.
+ * Reusable Solid Toast notification.
  */
 @Composable
 fun GlassToast(
@@ -895,35 +741,34 @@ fun GlassToast(
   modifier: Modifier = Modifier,
   isError: Boolean = false
 ) {
-  val surfaceColor = if (isError) Color(0xFFB91C1C).copy(alpha = 0.8f) else Color.White.copy(alpha = 0.75f)
-  val borderColor = if (isError) Color.Red else PinggoPinkPrimary
-  val textColor = if (isError) Color.White else LightPrimaryText
+  val surfaceColor = if (isError) DestructiveRed else PinggoBlack
+  val textColor = Color.White
 
   Surface(
-    shape = RoundedCornerShape(26.dp),
+    shape = RoundedCornerShape(20.dp),
     color = surfaceColor,
-    border = BorderStroke(1.dp, borderColor),
-    shadowElevation = 12.dp,
+    shadowElevation = 4.dp,
     modifier = modifier.padding(16.dp)
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+      modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      Text(text = if (isError) "⚠️ " else "✨ ", fontSize = 18.sp)
+      Text(text = if (isError) "⚠️ " else "✓ ", fontSize = 16.sp)
       Text(
         text = message,
         color = textColor,
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Bold
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium
       )
     }
   }
 }
 
 /**
- * BlurCapsuleDock - Premium iPhone-inspired floating navigation dock.
- * REDESIGN: Features a sliding animated capsule highlight and high-translucency frosted glass.
+ * Solid Surface Bottom Navigation Bar.
+ * Clean solid white dock with pink active state indicator and soft neutral gray for inactive.
+ * No backdrop blur, no frosted glass, solid native mobile navigation.
  */
 @Composable
 fun BlurCapsuleDock(
@@ -940,107 +785,49 @@ fun BlurCapsuleDock(
     )
   }
 
-  val selectedIndex = items.indexOfFirst { it.third == selectedTab }.coerceAtLeast(0)
-
-  Box(
-    modifier = modifier
-      .fillMaxWidth()
-      .navigationBarsPadding()
-      .padding(horizontal = 20.dp, vertical = 14.dp)
+  Surface(
+    modifier = modifier.fillMaxWidth(),
+    color = SolidSurfaceWhite,
+    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+    border = BorderStroke(0.5.dp, SolidBorderColor),
+    shadowElevation = 8.dp
   ) {
-    BoxWithConstraints(
-      modifier = Modifier.fillMaxWidth()
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .navigationBarsPadding()
+        .padding(horizontal = 8.dp, vertical = 6.dp),
+      horizontalArrangement = Arrangement.SpaceAround,
+      verticalAlignment = Alignment.CenterVertically
     ) {
-      val containerWidth = maxWidth
-      val tabWidth = containerWidth / items.size
+      items.forEach { (label, icon, tab) ->
+        val isSelected = selectedTab == tab
+        val interactionSource = remember { MutableInteractionSource() }
 
-      val capsuleOffset by animateDpAsState(
-        targetValue = tabWidth * selectedIndex,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessLow),
-        label = "capsuleOffset"
-      )
-
-      Surface(
-        shape = RoundedCornerShape(36.dp),
-        color = Color.White.copy(alpha = 0.78f),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.85f)),
-        shadowElevation = 10.dp,
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Box(
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
           modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp)
+            .weight(1f)
+            .clickable(
+              interactionSource = interactionSource,
+              indication = ripple(bounded = true, color = PinggoPinkPrimary)
+            ) { onTabSelected(tab) }
+            .padding(vertical = 6.dp)
+            .testTag("nav_item_$label")
         ) {
-          // Sliding Highlight Capsule
-          Box(
-            modifier = Modifier
-              .offset(x = capsuleOffset)
-              .width(tabWidth - 8.dp)
-              .height(48.dp)
-              .align(Alignment.CenterStart)
-              .clip(RoundedCornerShape(24.dp))
-              .background(PinggoPinkPrimary.copy(alpha = 0.20f))
-              .border(0.5.dp, PinggoPinkPrimary.copy(alpha = 0.40f), RoundedCornerShape(24.dp))
+          Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isSelected) PinggoPinkPrimary else LightSecondaryText,
+            modifier = Modifier.size(24.dp)
           )
-
-          // Navigation Items
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            items.forEach { (label, icon, tab) ->
-              val isSelected = selectedTab == tab
-              val interactionSource = remember { MutableInteractionSource() }
-              
-              Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                  .weight(1f)
-                  .clip(RoundedCornerShape(24.dp))
-                  .clickable(
-                    interactionSource = interactionSource,
-                    indication = ripple(bounded = true, color = PinggoPinkPrimary)
-                  ) { onTabSelected(tab) }
-                  .padding(vertical = 6.dp)
-                  .testTag("nav_item_$label")
-              ) {
-                val iconScale by animateFloatAsState(
-                  targetValue = if (isSelected) 1.15f else 1f,
-                  animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                  label = "iconScale"
-                )
-                val contentAlpha by animateFloatAsState(
-                  targetValue = if (isSelected) 1f else 0.7f,
-                  label = "contentAlpha"
-                )
-
-                Icon(
-                  imageVector = icon,
-                  contentDescription = label,
-                  tint = if (isSelected) PinggoPinkPrimary else Color(0xFF8E8E93),
-                  modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                      scaleX = iconScale
-                      scaleY = iconScale
-                      alpha = contentAlpha
-                    }
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                  text = label,
-                  style = MaterialTheme.typography.labelSmall,
-                  fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                  color = if (isSelected) PinggoPinkPrimary else LightPrimaryText,
-                  modifier = Modifier.graphicsLayer {
-                    alpha = contentAlpha
-                  }
-                )
-              }
-            }
-          }
+          Spacer(modifier = Modifier.height(3.dp))
+          Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) PinggoPinkPrimary else LightSecondaryText
+          )
         }
       }
     }
