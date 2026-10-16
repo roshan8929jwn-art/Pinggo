@@ -168,6 +168,12 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     } catch (e: Exception) {
       com.example.ui.theme.GlassDesign.CLEAR
     }
+    val savedThemeMode = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+    _themeMode.value = try {
+      AppThemeMode.valueOf(savedThemeMode)
+    } catch (e: Exception) {
+      AppThemeMode.SYSTEM
+    }
 
     viewModelScope.launch {
       currentUser.collect { user ->
@@ -342,6 +348,10 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun setThemeMode(mode: AppThemeMode) {
     _themeMode.value = mode
+    viewModelScope.launch {
+      val prefs = getApplication<Application>().getSharedPreferences("pinggo_settings", android.content.Context.MODE_PRIVATE)
+      prefs.edit().putString("theme_mode", mode.name).apply()
+    }
   }
 
   fun showToast(msg: String) {
