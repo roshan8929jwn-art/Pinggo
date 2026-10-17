@@ -17,7 +17,10 @@ import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -76,6 +79,74 @@ class FirebaseAuthRepository(private val context: Context) {
 
   private val _userProfile = MutableStateFlow<User?>(null)
   val userProfile: StateFlow<User?> = _userProfile.asStateFlow()
+
+  private var userProfileListener: ListenerRegistration? = null
+
+  fun startUserProfileListener(uid: String) {
+    if (uid.isEmpty()) return
+    userProfileListener?.remove()
+    val db = firestore ?: return
+    userProfileListener = db.collection("users").document(uid)
+      .addSnapshotListener { snapshot, error ->
+        if (error != null) {
+          Log.w("FirebaseAuthRepo", "userProfileListener error: ${error.message}")
+          return@addSnapshotListener
+        }
+        if (snapshot != null && snapshot.exists() && snapshot.data != null) {
+          val updated = User.fromMap(snapshot.data!!)
+          _userProfile.value = updated
+        }
+      }
+  }
+
+  fun stopUserProfileListener() {
+    userProfileListener?.remove()
+    userProfileListener = null
+  }
+
+  fun getUserFlow(uid: String): Flow<User?> = callbackFlow {
+    if (uid.isEmpty()) {
+      trySend(null)
+      awaitClose { }
+      return@callbackFlow
+    }
+    val db = firestore
+    if (db == null) {
+      trySend(null)
+      awaitClose { }
+      return@callbackFlow
+    }
+    val listener = db.collection("users").document(uid)
+      .addSnapshotListener { snapshot, error ->
+        if (error != null) {
+          trySend(null)
+          return@addSnapshotListener
+        }
+        if (snapshot != null && snapshot.exists() && snapshot.data != null) {
+          trySend(User.fromMap(snapshot.data!!))
+        } else {
+          trySend(null)
+        }
+      }
+    awaitClose {
+      listener.remove()
+    }
+  }
+
+  suspend fun updatePresence(uid: String, isOnline: Boolean) {
+    if (uid.isEmpty()) return
+    val db = firestore ?: return
+    try {
+      db.collection("users").document(uid).update(
+        mapOf(
+          "isOnline" to isOnline,
+          "lastSeen" to System.currentTimeMillis()
+        )
+      ).await()
+    } catch (e: Exception) {
+      // ignore
+    }
+  }
 
   init {
     try {
@@ -532,25 +603,52 @@ class FirebaseAuthRepository(private val context: Context) {
     readReceipts: Boolean,
     statusPrivacy: String
   ): Result<Unit> {
-    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    val previous = _userProfile.value
+    // Safe optimistic update for instantaneous UI feedback
+    if (previous != null && previous.uid == userId) {
+      _userProfile.value = previous.copy(
+        privacyLastSeen = lastSeen,
+        privacyReadReceipts = readReceipts,
+        privacyStatus = statusPrivacy
+      )
+    }
+
+    val db = firestore ?: return Result.success(Unit)
     return try {
-      db.collection("users").document(userId).update(
-        mapOf(
-          "privacyLastSeen" to lastSeen,
-          "privacyReadReceipts" to readReceipts,
-          "privacyStatus" to statusPrivacy
-        )
-      ).await()
-      val current = _userProfile.value
-      if (current != null && current.uid == userId) {
-        _userProfile.value = current.copy(
-          privacyLastSeen = lastSeen,
-          privacyReadReceipts = readReceipts,
-          privacyStatus = statusPrivacy
-        )
+      val data = mapOf(
+        "privacyLastSeen" to lastSeen,
+        "privacyReadReceipts" to readReceipts,
+        "privacyStatus" to statusPrivacy
+      )
+      db.collection("users").document(userId).set(data, SetOptions.merge()).await()
+
+      // Propagate status privacy change to active statuses in updates collection (memory-filtered to avoid composite index)
+      try {
+        val now = System.currentTimeMillis()
+        val oneDayAgo = now - 24 * 60 * 60 * 1000
+        val updatesSnapshot = db.collection("updates")
+          .whereEqualTo("userId", userId)
+          .limit(30)
+          .get().await()
+        for (doc in updatesSnapshot.documents) {
+          val ts = (doc.get("timestamp") as? Number)?.toLong() ?: 0L
+          if (ts > oneDayAgo) {
+            doc.reference.update(
+              mapOf(
+                "privacy" to statusPrivacy,
+                "allowedFriends" to (previous?.friends ?: emptyList<String>())
+              )
+            ).await()
+          }
+        }
+      } catch (e: Exception) {
+        Log.w("FirebaseAuthRepo", "Failed to update active statuses privacy: ${e.message}")
       }
+
       Result.success(Unit)
     } catch (e: Exception) {
+      // Do not crash or revert UI if offline, user already has updated local state
+      Log.w("FirebaseAuthRepo", "Firestore updatePrivacySettings error: ${e.message}")
       Result.failure(e)
     }
   }
@@ -564,13 +662,14 @@ class FirebaseAuthRepository(private val context: Context) {
   ): Result<Unit> {
     val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
     return try {
-      db.collection("users").document(userId).update(
+      db.collection("users").document(userId).set(
         mapOf(
           "notificationMessage" to message,
           "notificationGroup" to group,
           "notificationPreview" to preview,
           "notificationCall" to call
-        )
+        ),
+        SetOptions.merge()
       ).await()
       val current = _userProfile.value
       if (current != null && current.uid == userId) {
@@ -588,67 +687,89 @@ class FirebaseAuthRepository(private val context: Context) {
   }
 
   suspend fun blockUser(currentUserId: String, targetUserId: String): Result<Unit> {
-    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    val previous = _userProfile.value
+    if (previous != null && previous.uid == currentUserId) {
+      val updated = if (previous.blockedUsers.contains(targetUserId)) {
+        previous.blockedUsers
+      } else {
+        previous.blockedUsers + targetUserId
+      }
+      _userProfile.value = previous.copy(blockedUsers = updated)
+    }
+
+    val db = firestore ?: return Result.success(Unit)
     return try {
       val userRef = db.collection("users").document(currentUserId)
-      db.runTransaction { transaction ->
-        val snapshot = transaction.get(userRef)
-        @Suppress("UNCHECKED_CAST")
-        val blocked = (snapshot.get("blockedUsers") as? List<String>)?.toMutableList() ?: mutableListOf()
-        if (!blocked.contains(targetUserId)) {
-          blocked.add(targetUserId)
-        }
-        transaction.update(userRef, "blockedUsers", blocked)
-      }.await()
+      userRef.set(mapOf("blockedUsers" to FieldValue.arrayUnion(targetUserId)), SetOptions.merge()).await()
 
-      db.collection("blockedUsers").document(currentUserId)
-        .collection("blocked").document(targetUserId)
-        .set(mapOf("blockedAt" to System.currentTimeMillis())).await()
+      try {
+        db.collection("blockedUsers").document(currentUserId)
+          .collection("blocked").document(targetUserId)
+          .set(mapOf("blockedAt" to System.currentTimeMillis()), SetOptions.merge()).await()
+      } catch (e: Exception) {
+        Log.w("FirebaseAuthRepo", "blocked subcollection write error: ${e.message}")
+      }
 
       loadUserProfile(currentUserId)
       Result.success(Unit)
     } catch (e: Exception) {
+      Log.w("FirebaseAuthRepo", "blockUser error: ${e.message}")
       Result.failure(e)
     }
   }
 
   suspend fun unblockUser(currentUserId: String, targetUserId: String): Result<Unit> {
-    val db = firestore ?: return Result.failure(IllegalStateException("Firestore is not available"))
+    val previous = _userProfile.value
+    if (previous != null && previous.uid == currentUserId) {
+      _userProfile.value = previous.copy(
+        blockedUsers = previous.blockedUsers.filter { it != targetUserId }
+      )
+    }
+
+    val db = firestore ?: return Result.success(Unit)
     return try {
       val userRef = db.collection("users").document(currentUserId)
-      db.runTransaction { transaction ->
-        val snapshot = transaction.get(userRef)
-        @Suppress("UNCHECKED_CAST")
-        val blocked = (snapshot.get("blockedUsers") as? List<String>)?.toMutableList() ?: mutableListOf()
-        blocked.remove(targetUserId)
-        transaction.update(userRef, "blockedUsers", blocked)
-      }.await()
+      userRef.set(mapOf("blockedUsers" to FieldValue.arrayRemove(targetUserId)), SetOptions.merge()).await()
 
-      db.collection("blockedUsers").document(currentUserId)
-        .collection("blocked").document(targetUserId)
-        .delete().await()
+      try {
+        db.collection("blockedUsers").document(currentUserId)
+          .collection("blocked").document(targetUserId)
+          .delete().await()
+      } catch (e: Exception) {
+        Log.w("FirebaseAuthRepo", "blocked subcollection delete error: ${e.message}")
+      }
 
       loadUserProfile(currentUserId)
       Result.success(Unit)
     } catch (e: Exception) {
+      Log.w("FirebaseAuthRepo", "unblockUser error: ${e.message}")
       Result.failure(e)
     }
   }
 
   suspend fun fetchUsersByIds(uids: List<String>): List<User> {
     if (uids.isEmpty()) return emptyList()
-    val db = firestore ?: return emptyList()
+    val db = firestore
+    if (db == null) {
+      return uids.map { uid -> User(uid = uid, username = "user_${uid.take(6)}", displayName = "Blocked Contact") }
+    }
     return try {
       val results = mutableListOf<User>()
       for (uid in uids) {
-        val doc = db.collection("users").document(uid).get().await()
-        if (doc.exists() && doc.data != null) {
-          results.add(User.fromMap(doc.data!!))
+        try {
+          val doc = db.collection("users").document(uid).get().await()
+          if (doc.exists() && doc.data != null) {
+            results.add(User.fromMap(doc.data!!))
+          } else {
+            results.add(User(uid = uid, username = "user_${uid.take(6)}", displayName = "Blocked Contact"))
+          }
+        } catch (e: Exception) {
+          results.add(User(uid = uid, username = "user_${uid.take(6)}", displayName = "Blocked Contact"))
         }
       }
       results
     } catch (e: Exception) {
-      emptyList()
+      uids.map { uid -> User(uid = uid, username = "user_${uid.take(6)}", displayName = "Blocked Contact") }
     }
   }
 
@@ -678,6 +799,7 @@ class FirebaseAuthRepository(private val context: Context) {
 
   suspend fun signOut() {
     try {
+      stopUserProfileListener()
       val a = auth
       val db = firestore
       a?.currentUser?.let { user ->

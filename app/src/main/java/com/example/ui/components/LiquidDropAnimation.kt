@@ -1,6 +1,13 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -107,6 +114,57 @@ fun <T> LiquidDropScreenTransition(
       label = "ScreenTransition"
     ) { state ->
       content(state)
+    }
+  }
+}
+
+/**
+ * Premium Tab Screen Transition Container.
+ * Delivers a coordinated subtle horizontal slide and smooth fade between dock tabs.
+ * Duration: 240-260ms with smooth spring/FastOutSlowIn easing.
+ */
+@Composable
+fun TabScreenTransition(
+  selectedTab: String,
+  modifier: Modifier = Modifier,
+  content: @Composable (String) -> Unit
+) {
+  val isReducedMotion = rememberReducedMotion()
+  if (isReducedMotion) {
+    Box(modifier = modifier.fillMaxSize()) {
+      content(selectedTab)
+    }
+  } else {
+    AnimatedContent(
+      targetState = selectedTab,
+      transitionSpec = {
+        val tabOrder = listOf("Chats", "Chat", "Calls", "Updates", "Profile")
+        fun getIndex(t: String): Int {
+          val idx = tabOrder.indexOfFirst { t.startsWith(it, ignoreCase = true) }
+          return if (idx >= 0) idx else 0
+        }
+        val targetIdx = getIndex(targetState)
+        val initialIdx = getIndex(initialState)
+        val direction = if (targetIdx >= initialIdx) 1 else -1
+
+        (slideInHorizontally(
+          animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+          initialOffsetX = { fullWidth -> direction * (fullWidth / 8) }
+        ) + fadeIn(
+          animationSpec = tween(durationMillis = 240)
+        )).togetherWith(
+          slideOutHorizontally(
+            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+            targetOffsetX = { fullWidth -> -direction * (fullWidth / 8) }
+          ) + fadeOut(
+            animationSpec = tween(durationMillis = 200)
+          )
+        )
+      },
+      label = "TabScreenTransition",
+      modifier = modifier.fillMaxSize()
+    ) { currentTab ->
+      content(currentTab)
     }
   }
 }

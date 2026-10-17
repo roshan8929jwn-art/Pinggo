@@ -70,8 +70,48 @@ fun ChatScreen(
 
   val myUid = currentUser?.uid ?: ""
   val otherParticipant = conversation.getOtherParticipant(myUid)
+  val otherUid = otherParticipant?.uid ?: ""
+  val otherUser by viewModel.getUserFlow(otherUid).collectAsState(initial = null)
   val chatTitle = conversation.getTitle(myUid)
   val chatAvatar = conversation.getAvatarUrl(myUid)
+
+  val isOtherTyping = typingUsers.isNotEmpty()
+  val canSeeLastSeen = remember(currentUser, otherUser) {
+    if (otherUser == null) false
+    else if (currentUser?.uid == otherUser?.uid) true
+    else if (currentUser != null && currentUser!!.blockedUsers.contains(otherUser!!.uid)) false
+    else if (otherUser!!.blockedUsers.contains(currentUser?.uid ?: "")) false
+    else when (otherUser!!.privacyLastSeen) {
+      "everyone" -> true
+      "friends" -> currentUser != null && (otherUser!!.friends.contains(currentUser!!.uid) || currentUser!!.friends.contains(otherUser!!.uid))
+      "nobody" -> false
+      else -> true
+    }
+  }
+
+  val lastSeenText = remember(otherUser?.lastSeen) {
+    val ts = otherUser?.lastSeen ?: 0L
+    if (ts <= 0L) "offline"
+    else {
+      val diff = System.currentTimeMillis() - ts
+      when {
+        diff < 60_000L -> "last seen just now"
+        diff < 3600_000L -> "last seen ${diff / 60_000L}m ago"
+        diff < 86400_000L -> "last seen at " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(ts))
+        else -> "last seen " + SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(ts))
+      }
+    }
+  }
+
+  val statusSubtitle = when {
+    isOtherTyping -> "typing..."
+    canSeeLastSeen && (otherUser?.isOnline == true) -> "online"
+    canSeeLastSeen && otherUser != null -> lastSeenText
+    else -> ""
+  }
+
+  val isBlockedByMe = currentUser?.blockedUsers?.contains(otherUid) == true || viewModel.cachedBlockedUsers.contains(otherUid)
+  val isBlockedByOther = otherUser?.blockedUsers?.contains(myUid) == true
 
   val imagePickerLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
@@ -134,7 +174,7 @@ fun ChatScreen(
             photoUrl = chatAvatar,
             name = chatTitle,
             size = 42.dp,
-            isOnline = true
+            isOnline = canSeeLastSeen && (otherUser?.isOnline == true)
           )
 
           Spacer(modifier = Modifier.width(10.dp))
@@ -148,11 +188,13 @@ fun ChatScreen(
               maxLines = 1,
               overflow = TextOverflow.Ellipsis
             )
-            Text(
-              text = if (typingUsers.isNotEmpty()) "typing..." else "online",
-              fontSize = 12.sp,
-              color = if (typingUsers.isNotEmpty()) PinggoPinkPrimary else OnlinePink
-            )
+            if (statusSubtitle.isNotEmpty()) {
+              Text(
+                text = statusSubtitle,
+                fontSize = 12.sp,
+                color = if (isOtherTyping) PinggoPinkPrimary else if (otherUser?.isOnline == true && canSeeLastSeen) OnlinePink else LightSecondaryText
+              )
+            }
           }
 
           // Voice Call Icon
@@ -227,12 +269,16 @@ fun ChatScreen(
             }
             LiquidBlurDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
               LiquidBlurDropdownMenuItem(
-                text = "Block User",
-                icon = Icons.Default.Block,
+                text = if (isBlockedByMe) "Unblock User" else "Block User",
+                icon = if (isBlockedByMe) Icons.Default.CheckCircle else Icons.Default.Block,
                 onClick = {
                   showMenu = false
                   if (otherParticipant != null) {
-                    viewModel.blockUser(User(uid = otherParticipant.uid, username = otherParticipant.username))
+                    if (isBlockedByMe) {
+                      viewModel.unblockUser(otherParticipant.uid)
+                    } else {
+                      viewModel.blockUser(User(uid = otherParticipant.uid, displayName = otherParticipant.displayName, username = otherParticipant.username, photoURL = otherParticipant.photoURL))
+                    }
                   }
                 }
               )
@@ -286,7 +332,8 @@ fun ChatScreen(
                       message = msg,
                       isSent = isSent,
                       isPlaying = isPlaying && playingMessageId == msg.id,
-                      onPlayClick = { viewModel.playVoiceMessage(msg) }
+                      onPlayClick = { viewModel.playVoiceMessage(msg) },
+                      readReceiptsEnabled = currentUser?.privacyReadReceipts != false
                     )
                   }
                   "image" -> {
@@ -305,14 +352,28 @@ fun ChatScreen(
                           .clip(RoundedCornerShape(16.dp)),
                         contentScale = ContentScale.Crop
                       )
-                      Text(
-                        text = timeFormatted,
-                        fontSize = 10.sp,
-                        color = (if (isSent) Color.White else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.7f),
+                      Row(
                         modifier = Modifier
                           .align(Alignment.End)
-                          .padding(top = 4.dp, end = 6.dp)
-                      )
+                          .padding(top = 4.dp, end = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                      ) {
+                        Text(
+                          text = timeFormatted,
+                          fontSize = 10.sp,
+                          color = (if (isSent) Color.White else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.7f)
+                        )
+                        if (isSent) {
+                          Spacer(modifier = Modifier.width(4.dp))
+                          val showRead = currentUser?.privacyReadReceipts != false && msg.read
+                          Text(
+                            text = if (showRead) "✓✓" else if (msg.delivered) "✓✓" else "✓",
+                            color = if (showRead) Color(0xFFE0F2FE) else Color.White.copy(alpha = 0.85f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                          )
+                        }
+                      }
                     }
                   }
                   else -> {
@@ -320,6 +381,8 @@ fun ChatScreen(
                       text = msg.text,
                       timestamp = timeFormatted,
                       isSent = isSent,
+                      delivered = msg.delivered,
+                      read = if (currentUser?.privacyReadReceipts == false) false else msg.read,
                       replySnippet = msg.replyToText.ifEmpty { null },
                       replySender = msg.replyToSender.ifEmpty { null }
                     )
@@ -370,17 +433,76 @@ fun ChatScreen(
       }
 
       // Bottom Message Composer
-      Surface(
-        modifier = Modifier
-          .fillMaxWidth()
-          .imePadding()
-          .navigationBarsPadding()
-          .padding(horizontal = 14.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = SolidSurfaceWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
-        shadowElevation = 2.dp
-      ) {
+      if (isBlockedByMe) {
+        Surface(
+          modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+          shape = RoundedCornerShape(24.dp),
+          color = SolidSurfaceWhite,
+          border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
+          shadowElevation = 2.dp
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Text(
+              text = "You have blocked this contact.",
+              fontSize = 13.sp,
+              color = DestructiveRed,
+              fontWeight = FontWeight.Medium
+            )
+            com.example.ui.components.GlassButton(
+              text = "Unblock",
+              isPrimary = true,
+              onClick = { viewModel.unblockUser(otherUid) }
+            )
+          }
+        }
+      } else if (isBlockedByOther) {
+        Surface(
+          modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+          shape = RoundedCornerShape(24.dp),
+          color = SolidSurfaceWhite,
+          border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
+          shadowElevation = 2.dp
+        ) {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center
+          ) {
+            Text(
+              text = "You cannot send messages to this contact.",
+              fontSize = 13.sp,
+              color = LightSecondaryText,
+              fontWeight = FontWeight.Medium
+            )
+          }
+        }
+      } else {
+        Surface(
+          modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+          shape = RoundedCornerShape(24.dp),
+          color = SolidSurfaceWhite,
+          border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
+          shadowElevation = 2.dp
+        ) {
         Row(
           modifier = Modifier
             .fillMaxWidth()
@@ -513,6 +635,7 @@ fun ChatScreen(
             }
           }
         }
+      }
       }
     }
 
@@ -773,11 +896,12 @@ fun VoiceMessageBubble(
   message: Message,
   isSent: Boolean,
   isPlaying: Boolean,
-  onPlayClick: () -> Unit
+  onPlayClick: () -> Unit,
+  readReceiptsEnabled: Boolean = true
 ) {
   val shape = RoundedCornerShape(20.dp)
-  val bg = if (isSent) PinggoPinkPrimary else MaterialTheme.colorScheme.surface
   val contentColor = if (isSent) Color.White else LightPrimaryText
+  val timeFormatted = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(message.timestamp))
 
   Row(
     modifier = Modifier
@@ -812,11 +936,23 @@ fun VoiceMessageBubble(
         fontWeight = FontWeight.SemiBold,
         color = contentColor
       )
-      Text(
-        text = "${message.voiceDurationSec}s",
-        fontSize = 11.sp,
-        color = contentColor.copy(alpha = 0.8f)
-      )
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+          text = "${message.voiceDurationSec}s • $timeFormatted",
+          fontSize = 11.sp,
+          color = contentColor.copy(alpha = 0.8f)
+        )
+        if (isSent) {
+          Spacer(modifier = Modifier.width(4.dp))
+          val showRead = readReceiptsEnabled && message.read
+          Text(
+            text = if (showRead) "✓✓" else if (message.delivered) "✓✓" else "✓",
+            color = if (showRead) Color(0xFFE0F2FE) else Color.White.copy(alpha = 0.85f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+          )
+        }
+      }
     }
   }
 }

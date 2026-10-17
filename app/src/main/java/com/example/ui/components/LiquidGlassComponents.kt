@@ -1,5 +1,10 @@
 package com.example.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -23,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -31,12 +37,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
+import kotlin.math.roundToInt
 
 /**
  * Clean Modern Solid Surface Background.
@@ -766,15 +774,20 @@ fun GlassToast(
 }
 
 /**
- * Solid Surface Bottom Navigation Bar.
- * Clean solid white dock with pink active state indicator and soft neutral gray for inactive.
- * No backdrop blur, no frosted glass, solid native mobile navigation.
+ * Premium Modern Animated Floating Capsule Dock.
+ * - Solid surface container with subtle borders and soft shadow.
+ * - Smooth gliding animated pink capsule that physically translates between tabs.
+ * - Coordinated spring physics (~300-380ms), gentle elastic glide.
+ * - Icon scale (1.08x) and smooth color transitions.
+ * - Fixed at bottom respecting system navigation and gesture insets.
  */
 @Composable
 fun BlurCapsuleDock(
   selectedTab: String,
   onTabSelected: (String) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  unreadChatsCount: Int = 0,
+  unreadCallsCount: Int = 0
 ) {
   val items = remember {
     listOf(
@@ -785,49 +798,176 @@ fun BlurCapsuleDock(
     )
   }
 
-  Surface(
-    modifier = modifier.fillMaxWidth(),
-    color = SolidSurfaceWhite,
-    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-    border = BorderStroke(0.5.dp, SolidBorderColor),
-    shadowElevation = 8.dp
+  val selectedIndex = remember(selectedTab) {
+    when {
+      selectedTab.startsWith("Chat", ignoreCase = true) -> 0
+      selectedTab.equals("Calls", ignoreCase = true) -> 1
+      selectedTab.equals("Updates", ignoreCase = true) -> 2
+      selectedTab.equals("Profile", ignoreCase = true) -> 3
+      else -> 0
+    }
+  }
+
+  // Smooth spring physics for gliding capsule: ~300-400ms with subtle elastic feel without excessive bounce
+  val animatedTabOffset by animateFloatAsState(
+    targetValue = selectedIndex.toFloat(),
+    animationSpec = spring(
+      dampingRatio = 0.82f,
+      stiffness = Spring.StiffnessLow
+    ),
+    label = "GlidingCapsuleOffset"
+  )
+
+  Box(
+    modifier = modifier
+      .fillMaxWidth()
+      .navigationBarsPadding()
+      .padding(horizontal = 16.dp, vertical = 8.dp),
+    contentAlignment = Alignment.Center
   ) {
-    Row(
+    Surface(
       modifier = Modifier
         .fillMaxWidth()
-        .navigationBarsPadding()
-        .padding(horizontal = 8.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.SpaceAround,
-      verticalAlignment = Alignment.CenterVertically
+        .height(64.dp)
+        .testTag("capsule_dock"),
+      shape = RoundedCornerShape(32.dp),
+      color = PinggoTheme.colors.cardBackground,
+      border = BorderStroke(1.dp, PinggoTheme.colors.border),
+      shadowElevation = 8.dp
     ) {
-      items.forEach { (label, icon, tab) ->
-        val isSelected = selectedTab == tab
-        val interactionSource = remember { MutableInteractionSource() }
+      BoxWithConstraints(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(horizontal = 6.dp, vertical = 6.dp)
+      ) {
+        val tabWidth = maxWidth / 4
 
-        Column(
-          horizontalAlignment = Alignment.CenterHorizontally,
+        // Animated Gliding Pink Capsule behind active tab
+        Box(
           modifier = Modifier
-            .weight(1f)
-            .clickable(
-              interactionSource = interactionSource,
-              indication = ripple(bounded = true, color = PinggoPinkPrimary)
-            ) { onTabSelected(tab) }
-            .padding(vertical = 6.dp)
-            .testTag("nav_item_$label")
+            .offset {
+              IntOffset(
+                x = (animatedTabOffset * tabWidth.toPx()).roundToInt(),
+                y = 0
+              )
+            }
+            .width(tabWidth)
+            .fillMaxHeight()
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(PinggoPinkPrimary.copy(alpha = 0.12f))
+            .border(
+              width = 1.dp,
+              color = PinggoPinkPrimary.copy(alpha = 0.25f),
+              shape = RoundedCornerShape(24.dp)
+            )
+        )
+
+        // Row of 4 tabs
+        Row(
+          modifier = Modifier.fillMaxSize(),
+          horizontalArrangement = Arrangement.SpaceAround,
+          verticalAlignment = Alignment.CenterVertically
         ) {
-          Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isSelected) PinggoPinkPrimary else LightSecondaryText,
-            modifier = Modifier.size(24.dp)
-          )
-          Spacer(modifier = Modifier.height(3.dp))
-          Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) PinggoPinkPrimary else LightSecondaryText
-          )
+          items.forEachIndexed { index, (label, icon, tabKey) ->
+            val isSelected = selectedIndex == index
+
+            val iconScale by animateFloatAsState(
+              targetValue = if (isSelected) 1.08f else 1.0f,
+              animationSpec = spring(
+                dampingRatio = 0.75f,
+                stiffness = Spring.StiffnessMediumLow
+              ),
+              label = "TabScale_$label"
+            )
+
+            val itemColor by animateColorAsState(
+              targetValue = if (isSelected) PinggoPinkPrimary else PinggoTheme.colors.secondaryText,
+              animationSpec = tween(durationMillis = 200),
+              label = "TabColor_$label"
+            )
+
+            Box(
+              modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(24.dp))
+                .clickable(
+                  interactionSource = remember { MutableInteractionSource() },
+                  indication = ripple(bounded = true, color = PinggoPinkPrimary.copy(alpha = 0.18f)),
+                  onClick = { onTabSelected(tabKey) }
+                )
+                .testTag("nav_item_$label"),
+              contentAlignment = Alignment.Center
+            ) {
+              Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.graphicsLayer {
+                  scaleX = iconScale
+                  scaleY = iconScale
+                }
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = itemColor,
+                    modifier = Modifier.size(23.dp)
+                  )
+
+                  if (index == 0 && unreadChatsCount > 0) {
+                    Box(
+                      modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 6.dp, y = (-3).dp)
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(PinggoPinkPrimary),
+                      contentAlignment = Alignment.Center
+                    ) {
+                      Text(
+                        text = if (unreadChatsCount > 9) "9+" else unreadChatsCount.toString(),
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 9.sp
+                      )
+                    }
+                  } else if (index == 1 && unreadCallsCount > 0) {
+                    Box(
+                      modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 6.dp, y = (-3).dp)
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(PinggoPinkPrimary),
+                      contentAlignment = Alignment.Center
+                    ) {
+                      Text(
+                        text = if (unreadCallsCount > 9) "9+" else unreadCallsCount.toString(),
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 9.sp
+                      )
+                    }
+                  }
+                }
+
+                Spacer(modifier = Modifier.height(1.dp))
+
+                Text(
+                  text = label,
+                  fontSize = 11.sp,
+                  lineHeight = 12.sp,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                  color = itemColor,
+                  maxLines = 1
+                )
+              }
+            }
+          }
         }
       }
     }

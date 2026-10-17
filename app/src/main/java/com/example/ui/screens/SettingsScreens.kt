@@ -182,6 +182,10 @@ fun SettingsScreen(
             viewModel.loadBlockedUsers()
           }
 
+          val currentLastSeen = user?.privacyLastSeen ?: viewModel.cachedPrivacyLastSeen
+          val currentReadReceipts = user?.privacyReadReceipts ?: viewModel.cachedPrivacyReadReceipts
+          val currentStatusPriv = user?.privacyStatus ?: viewModel.cachedPrivacyStatus
+
           Text(
             text = "Last Seen Visibility",
             fontSize = 14.sp,
@@ -192,15 +196,12 @@ fun SettingsScreen(
 
           GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp)) {
-              val currentLastSeen = user?.privacyLastSeen ?: "everyone"
               listOf("Everyone" to "everyone", "My Friends" to "friends", "Nobody" to "nobody").forEach { (label, key) ->
                 Row(
                   modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                      user?.let { u ->
-                        viewModel.updatePrivacySettings(key, u.privacyReadReceipts, u.privacyStatus)
-                      }
+                      viewModel.updatePrivacySettings(key, currentReadReceipts, currentStatusPriv)
                     }
                     .padding(vertical = 8.dp, horizontal = 4.dp),
                   verticalAlignment = Alignment.CenterVertically
@@ -214,9 +215,7 @@ fun SettingsScreen(
                   RadioButton(
                     selected = currentLastSeen == key,
                     onClick = {
-                      user?.let { u ->
-                        viewModel.updatePrivacySettings(key, u.privacyReadReceipts, u.privacyStatus)
-                      }
+                      viewModel.updatePrivacySettings(key, currentReadReceipts, currentStatusPriv)
                     },
                     colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
                   )
@@ -251,17 +250,15 @@ fun SettingsScreen(
                   color = LightPrimaryText
                 )
                 Text(
-                  text = if (user?.privacyReadReceipts != false) "On • Senders see when messages are read" else "Off • No read status sent or seen",
+                  text = if (currentReadReceipts) "On • Senders see when messages are read" else "Off • No read status sent or seen",
                   fontSize = 12.sp,
                   color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
               }
               Switch(
-                checked = user?.privacyReadReceipts ?: true,
+                checked = currentReadReceipts,
                 onCheckedChange = { checked ->
-                  user?.let { u ->
-                    viewModel.updatePrivacySettings(u.privacyLastSeen, checked, u.privacyStatus)
-                  }
+                  viewModel.updatePrivacySettings(currentLastSeen, checked, currentStatusPriv)
                 },
                 colors = SwitchDefaults.colors(checkedThumbColor = com.example.ui.theme.PinggoPinkPrimary)
               )
@@ -280,15 +277,12 @@ fun SettingsScreen(
 
           GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp)) {
-              val currentStatusPriv = user?.privacyStatus ?: "everyone"
               listOf("Everyone" to "everyone", "My Friends" to "friends").forEach { (label, key) ->
                 Row(
                   modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                      user?.let { u ->
-                        viewModel.updatePrivacySettings(u.privacyLastSeen, u.privacyReadReceipts, key)
-                      }
+                      viewModel.updatePrivacySettings(currentLastSeen, currentReadReceipts, key)
                     }
                     .padding(vertical = 8.dp, horizontal = 4.dp),
                   verticalAlignment = Alignment.CenterVertically
@@ -302,9 +296,7 @@ fun SettingsScreen(
                   RadioButton(
                     selected = currentStatusPriv == key,
                     onClick = {
-                      user?.let { u ->
-                        viewModel.updatePrivacySettings(u.privacyLastSeen, u.privacyReadReceipts, key)
-                      }
+                      viewModel.updatePrivacySettings(currentLastSeen, currentReadReceipts, key)
                     },
                     colors = RadioButtonDefaults.colors(selectedColor = com.example.ui.theme.PinggoPinkPrimary)
                   )

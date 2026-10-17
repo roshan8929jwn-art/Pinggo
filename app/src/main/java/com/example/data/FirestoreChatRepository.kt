@@ -7,9 +7,11 @@ import com.example.model.Message
 import com.example.model.ParticipantInfo
 import com.example.model.StatusUpdate
 import com.example.model.User
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -301,6 +303,30 @@ class FirestoreChatRepository {
   ): Result<Message> {
     val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
+      // Check block restrictions for direct chats
+      val convDoc = db.collection("conversations").document(conversationId).get().await()
+      if (convDoc.exists()) {
+        val convType = convDoc.getString("type") ?: "direct"
+        if (convType == "direct") {
+          @Suppress("UNCHECKED_CAST")
+          val participants = convDoc.get("participants") as? List<String> ?: emptyList()
+          val otherUid = participants.firstOrNull { it != sender.uid }
+          if (otherUid != null) {
+            if (sender.blockedUsers.contains(otherUid)) {
+              return Result.failure(IllegalStateException("You have blocked this user. Unblock them in Privacy Settings to chat."))
+            }
+            val otherDoc = db.collection("users").document(otherUid).get().await()
+            if (otherDoc.exists()) {
+              @Suppress("UNCHECKED_CAST")
+              val otherBlocked = otherDoc.get("blockedUsers") as? List<String> ?: emptyList()
+              if (otherBlocked.contains(sender.uid)) {
+                return Result.failure(IllegalStateException("Unable to send message to this user."))
+              }
+            }
+          }
+        }
+      }
+
       val msgId = UUID.randomUUID().toString()
       val now = System.currentTimeMillis()
       val message = Message(
@@ -654,11 +680,13 @@ class FirestoreChatRepository {
   suspend fun blockUser(currentUserId: String, targetUserId: String) {
     val db = firestore ?: return
     try {
+      db.collection("users").document(currentUserId)
+        .update("blockedUsers", FieldValue.arrayUnion(targetUserId)).await()
       db.collection("blockedUsers")
         .document(currentUserId)
         .collection("blocked")
         .document(targetUserId)
-        .set(mapOf("blockedAt" to System.currentTimeMillis()))
+        .set(mapOf("blockedAt" to System.currentTimeMillis()), SetOptions.merge())
         .await()
     } catch (e: Exception) {
       e.printStackTrace()
@@ -743,7 +771,9 @@ class FirestoreChatRepository {
         text = text,
         imageUrl = imageUrl,
         mediaType = mediaType,
-        timestamp = System.currentTimeMillis()
+        timestamp = System.currentTimeMillis(),
+        privacy = user.privacyStatus,
+        allowedFriends = user.friends
       )
       db.collection("updates").document(id).set(update.toMap()).await()
       Result.success(update)
@@ -894,6 +924,12 @@ class FirestoreChatRepository {
   }
 
   suspend fun initiateCall(caller: User, receiver: User, type: String): Result<CallSession> {
+    if (caller.blockedUsers.contains(receiver.uid)) {
+      return Result.failure(IllegalStateException("You have blocked this user. Unblock them in Privacy Settings to call."))
+    }
+    if (receiver.blockedUsers.contains(caller.uid)) {
+      return Result.failure(IllegalStateException("Unable to call this user."))
+    }
     val db = firestore ?: return Result.failure(IllegalStateException("Cloud Firestore is not available"))
     return try {
       val callId = UUID.randomUUID().toString()
@@ -936,10 +972,21 @@ class FirestoreChatRepository {
     if (sender.uid == receiverId) {
       return Result.failure(IllegalArgumentException("You cannot send a friend request to yourself."))
     }
+    if (sender.blockedUsers.contains(receiverId)) {
+      return Result.failure(IllegalArgumentException("You have blocked this user. Unblock them in Privacy Settings."))
+    }
     if (sender.friends.contains(receiverId)) {
       return Result.failure(IllegalArgumentException("You are already friends with this user."))
     }
     try {
+      val receiverDoc = db.collection("users").document(receiverId).get().await()
+      if (receiverDoc.exists()) {
+        @Suppress("UNCHECKED_CAST")
+        val receiverBlocked = receiverDoc.get("blockedUsers") as? List<String> ?: emptyList()
+        if (receiverBlocked.contains(sender.uid)) {
+          return Result.failure(IllegalArgumentException("Unable to send friend request to this user."))
+        }
+      }
       val requestId = "${sender.uid}_$receiverId"
       val existingReq = db.collection("friend_requests").document(requestId).get().await()
       if (existingReq.exists() && existingReq.getString("status") == "pending") {

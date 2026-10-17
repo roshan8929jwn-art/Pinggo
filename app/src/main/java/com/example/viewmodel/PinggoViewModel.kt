@@ -1,6 +1,7 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,11 +21,14 @@ import com.example.util.FirebaseInitializer
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -35,6 +39,17 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   val storageRepo = FirebaseStorageRepository()
   val voiceHelper = VoiceRecorderHelper(application)
   val firebaseDiagnostic: StateFlow<FirebaseDiagnosticInfo> = FirebaseInitializer.diagnostic
+
+  // Privacy preferences cache & local persistence (instant response & offline/restart resilience)
+  private val privacyPrefs = application.getSharedPreferences("pinggo_privacy_prefs", Context.MODE_PRIVATE)
+
+  var cachedPrivacyLastSeen: String = privacyPrefs.getString("privacy_last_seen", "everyone") ?: "everyone"
+    private set
+  var cachedPrivacyReadReceipts: Boolean = privacyPrefs.getBoolean("privacy_read_receipts", true)
+    private set
+  var cachedPrivacyStatus: String = privacyPrefs.getString("privacy_status", "everyone") ?: "everyone"
+    private set
+  val cachedBlockedUsers: MutableSet<String> = (privacyPrefs.getStringSet("blocked_users", emptySet()) ?: emptySet()).toMutableSet()
 
   private val _isGuestMode = MutableStateFlow(false)
   val isGuestMode: StateFlow<Boolean> = _isGuestMode.asStateFlow()
@@ -175,10 +190,46 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       AppThemeMode.SYSTEM
     }
 
+    // Observe user profile to keep local privacy prefs & cached fields in sync
+    viewModelScope.launch {
+      userProfile.collect { profile ->
+        if (profile != null) {
+          cachedPrivacyLastSeen = profile.privacyLastSeen
+          cachedPrivacyReadReceipts = profile.privacyReadReceipts
+          cachedPrivacyStatus = profile.privacyStatus
+          cachedBlockedUsers.clear()
+          cachedBlockedUsers.addAll(profile.blockedUsers)
+          privacyPrefs.edit()
+            .putString("privacy_last_seen", profile.privacyLastSeen)
+            .putBoolean("privacy_read_receipts", profile.privacyReadReceipts)
+            .putString("privacy_status", profile.privacyStatus)
+            .putStringSet("blocked_users", cachedBlockedUsers)
+            .apply()
+        }
+      }
+    }
+
+    // Auto-sync blocked users list with current blocked IDs
+    viewModelScope.launch {
+      combine(userProfile, _guestProfile) { authUser, guest ->
+        authUser?.blockedUsers ?: guest?.blockedUsers ?: cachedBlockedUsers.toList()
+      }.distinctUntilChanged().collect { uids ->
+        if (uids.isEmpty()) {
+          _blockedUsersList.value = emptyList()
+        } else {
+          val users = authRepo.fetchUsersByIds(uids)
+          _blockedUsersList.value = users
+        }
+      }
+    }
+
     viewModelScope.launch {
       currentUser.collect { user ->
         if (user != null) {
+          _isGuestMode.value = false
           authRepo.loadUserProfile(user.uid)
+          authRepo.startUserProfileListener(user.uid)
+          authRepo.updatePresence(user.uid, true)
           listenToConversations(user.uid)
           listenToIncomingCalls(user.uid)
           listenToCallHistory(user.uid)
@@ -186,6 +237,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
           listenToNotifications(user.uid)
           listenToFriendRequests(user.uid)
           listenToOutgoingRequests(user.uid)
+          loadBlockedUsers()
           
           // Migration for existing users
           viewModelScope.launch {
@@ -197,15 +249,16 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
             }
           }
         } else if (!_isGuestMode.value) {
+          authRepo.stopUserProfileListener()
           _conversations.value = emptyList()
           _activeConversation.value = null
           _activeMessages.value = emptyList()
           _statusUpdates.value = emptyList()
           _callHistory.value = emptyList()
-          _blockedUsersList.value = emptyList()
           _notifications.value = emptyList()
           _friendRequests.value = emptyList()
           _outgoingRequests.value = emptyList()
+          loadBlockedUsers()
         }
       }
     }
@@ -313,9 +366,14 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       email = "explorer@pinggo.internal",
       bio = "Exploring the Pinggo Liquid Glass Experience ✨",
       createdAt = System.currentTimeMillis(),
-      isOnline = true
+      isOnline = true,
+      privacyLastSeen = cachedPrivacyLastSeen,
+      privacyReadReceipts = cachedPrivacyReadReceipts,
+      privacyStatus = cachedPrivacyStatus,
+      blockedUsers = cachedBlockedUsers.toList()
     )
     _guestProfile.value = guest
+    loadBlockedUsers()
 
     val demoDetails = mapOf(
       guest.uid to ParticipantInfo(guest.uid, guest.displayName, guest.username, guest.photoURL),
@@ -579,7 +637,9 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   fun openConversation(conversation: Conversation) {
     _activeConversation.value = conversation
-    val user = userProfile.value ?: return
+    val user = userProfile.value
+    val myUid = user?.uid ?: currentUser.value?.uid ?: ""
+    val readReceiptsPref = user?.privacyReadReceipts ?: cachedPrivacyReadReceipts
 
     if (conversation.id == "conv_ai_demo" && _activeMessages.value.isEmpty()) {
       _activeMessages.value = listOf(
@@ -595,20 +655,26 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       return
     }
 
-    viewModelScope.launch {
-      chatRepo.markAsRead(conversation.id, user.uid)
+    if (myUid.isNotEmpty()) {
+      viewModelScope.launch {
+        chatRepo.markAsRead(conversation.id, myUid, sendReadReceipts = readReceiptsPref)
+      }
     }
 
     messagesJob?.cancel()
     messagesJob = viewModelScope.launch {
       chatRepo.getMessagesFlow(conversation.id).collect { msgs ->
         _activeMessages.value = msgs
+        val hasUnreadFromOther = msgs.any { it.senderId != myUid && !it.read }
+        if (hasUnreadFromOther && myUid.isNotEmpty()) {
+          chatRepo.markAsRead(conversation.id, myUid, sendReadReceipts = readReceiptsPref)
+        }
       }
     }
 
     typingJob?.cancel()
     typingJob = viewModelScope.launch {
-      chatRepo.getTypingFlow(conversation.id, user.uid).collect { typers ->
+      chatRepo.getTypingFlow(conversation.id, myUid).collect { typers ->
         _typingUsers.value = typers
       }
     }
@@ -813,12 +879,8 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun blockUser(targetUser: User) {
-    val me = userProfile.value ?: return
-    viewModelScope.launch {
-      chatRepo.blockUser(me.uid, targetUser.uid)
-      _previewUser.value = null
-      showToast("Blocked @${targetUser.username}")
-    }
+    blockUser(targetUser.uid)
+    _previewUser.value = null
   }
 
   fun reportUser(targetUser: User, reason: String) {
@@ -926,15 +988,32 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   // Privacy & Blocking
   fun updatePrivacySettings(lastSeen: String, readReceipts: Boolean, statusPrivacy: String) {
-    val me = userProfile.value ?: return
-    viewModelScope.launch {
-      val res = authRepo.updatePrivacySettings(me.uid, lastSeen, readReceipts, statusPrivacy)
-      if (res.isSuccess) {
-        showToast("Privacy settings updated")
-      } else {
-        showToast("Failed to update privacy settings")
+    cachedPrivacyLastSeen = lastSeen
+    cachedPrivacyReadReceipts = readReceipts
+    cachedPrivacyStatus = statusPrivacy
+    privacyPrefs.edit()
+      .putString("privacy_last_seen", lastSeen)
+      .putBoolean("privacy_read_receipts", readReceipts)
+      .putString("privacy_status", statusPrivacy)
+      .apply()
+
+    // Optimistically update guest profile
+    val guest = _guestProfile.value
+    if (guest != null) {
+      _guestProfile.value = guest.copy(
+        privacyLastSeen = lastSeen,
+        privacyReadReceipts = readReceipts,
+        privacyStatus = statusPrivacy
+      )
+    }
+
+    val me = userProfile.value
+    if (me != null && !_isGuestMode.value) {
+      viewModelScope.launch {
+        authRepo.updatePrivacySettings(me.uid, lastSeen, readReceipts, statusPrivacy)
       }
     }
+    showToast("Privacy settings updated")
   }
 
   fun updateNotificationSettings(message: Boolean, group: Boolean, preview: Boolean, call: Boolean) {
@@ -950,38 +1029,65 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun loadBlockedUsers() {
-    val user = userProfile.value ?: return
+    val uids = userProfile.value?.blockedUsers ?: _guestProfile.value?.blockedUsers ?: cachedBlockedUsers.toList()
+    if (uids.isEmpty()) {
+      _blockedUsersList.value = emptyList()
+      return
+    }
     viewModelScope.launch {
-      val users = authRepo.fetchUsersByIds(user.blockedUsers)
+      val users = authRepo.fetchUsersByIds(uids)
       _blockedUsersList.value = users
     }
   }
 
   fun blockUser(targetUserId: String) {
-    val user = userProfile.value ?: return
-    viewModelScope.launch {
-      val res = authRepo.blockUser(user.uid, targetUserId)
-      if (res.isSuccess) {
-        showToast("User blocked")
-        loadBlockedUsers()
-      } else {
-        showToast("Failed to block user")
+    if (targetUserId.isEmpty()) return
+    cachedBlockedUsers.add(targetUserId)
+    privacyPrefs.edit().putStringSet("blocked_users", cachedBlockedUsers).apply()
+
+    val guest = _guestProfile.value
+    if (guest != null) {
+      if (!guest.blockedUsers.contains(targetUserId)) {
+        _guestProfile.value = guest.copy(blockedUsers = guest.blockedUsers + targetUserId)
       }
     }
+
+    val user = userProfile.value
+    if (user != null && !_isGuestMode.value) {
+      viewModelScope.launch {
+        authRepo.blockUser(user.uid, targetUserId)
+        loadBlockedUsers()
+      }
+    } else {
+      loadBlockedUsers()
+    }
+    showToast("User blocked")
   }
 
   fun unblockUser(targetUserId: String) {
-    val user = userProfile.value ?: return
-    viewModelScope.launch {
-      val res = authRepo.unblockUser(user.uid, targetUserId)
-      if (res.isSuccess) {
-        showToast("User unblocked")
+    if (targetUserId.isEmpty()) return
+    cachedBlockedUsers.remove(targetUserId)
+    privacyPrefs.edit().putStringSet("blocked_users", cachedBlockedUsers).apply()
+
+    // Optimistically remove from blocked list so UI updates immediately
+    _blockedUsersList.value = _blockedUsersList.value.filter { it.uid != targetUserId }
+
+    val guest = _guestProfile.value
+    if (guest != null) {
+      _guestProfile.value = guest.copy(blockedUsers = guest.blockedUsers.filter { it != targetUserId })
+    }
+
+    val user = userProfile.value
+    if (user != null && !_isGuestMode.value) {
+      viewModelScope.launch {
+        authRepo.unblockUser(user.uid, targetUserId)
         loadBlockedUsers()
-      } else {
-        showToast("Failed to unblock user")
       }
     }
+    showToast("User unblocked")
   }
+
+  fun getUserFlow(uid: String): Flow<User?> = authRepo.getUserFlow(uid)
 
   // Guest Account & Auth
   fun registerGuestAccount(
@@ -1281,6 +1387,12 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
 
   override fun onCleared() {
     super.onCleared()
+    val me = userProfile.value
+    if (me != null && !_isGuestMode.value) {
+      viewModelScope.launch {
+        authRepo.updatePresence(me.uid, false)
+      }
+    }
     voiceHelper.release()
     conversationsJob?.cancel()
     messagesJob?.cancel()

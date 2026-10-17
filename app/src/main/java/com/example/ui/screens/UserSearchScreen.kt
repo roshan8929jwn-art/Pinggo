@@ -48,6 +48,18 @@ fun UserSearchScreen(
   val isSearching by viewModel.isSearching.collectAsState()
   val previewUser by viewModel.previewUser.collectAsState()
   val currentUser by viewModel.userProfile.collectAsState()
+
+  fun canSeeOnline(target: User): Boolean {
+    if (currentUser?.uid == target.uid) return true
+    if (currentUser != null && currentUser!!.blockedUsers.contains(target.uid)) return false
+    if (target.blockedUsers.contains(currentUser?.uid ?: "")) return false
+    return when (target.privacyLastSeen) {
+      "everyone" -> true
+      "friends" -> currentUser != null && (target.friends.contains(currentUser!!.uid) || currentUser!!.friends.contains(target.uid))
+      "nobody" -> false
+      else -> true
+    }
+  }
   val outgoingRequests by viewModel.outgoingRequests.collectAsState()
   val incomingRequests by viewModel.friendRequests.collectAsState()
 
@@ -132,7 +144,7 @@ fun UserSearchScreen(
                   photoUrl = user.photoURL,
                   name = user.displayName,
                   size = 48.dp,
-                  isOnline = user.isOnline
+                  isOnline = canSeeOnline(user) && user.isOnline
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -291,7 +303,7 @@ fun UserSearchScreen(
               photoUrl = user.photoURL,
               name = user.displayName,
               size = 80.dp,
-              isOnline = user.isOnline
+              isOnline = canSeeOnline(user) && user.isOnline
             )
             Spacer(modifier = Modifier.height(14.dp))
             Text(
@@ -400,12 +412,19 @@ fun UserSearchScreen(
             }
 
             if (!isMe) {
+              val isBlocked = currentUser?.blockedUsers?.contains(user.uid) == true || viewModel.cachedBlockedUsers.contains(user.uid)
               Spacer(modifier = Modifier.height(10.dp))
               Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GlassButton(
-                  text = "Block",
+                  text = if (isBlocked) "Unblock" else "Block",
                   isPrimary = false,
-                  onClick = { viewModel.blockUser(user) },
+                  onClick = {
+                    if (isBlocked) {
+                      viewModel.unblockUser(user.uid)
+                    } else {
+                      viewModel.blockUser(user)
+                    }
+                  },
                   modifier = Modifier.weight(1f)
                 )
                 GlassButton(

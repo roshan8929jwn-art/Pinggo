@@ -17,7 +17,9 @@ data class StatusUpdate(
   val imageUrl: String = "",
   val mediaType: String = "image", // "image", "video", "text"
   val timestamp: Long = System.currentTimeMillis(),
-  val viewers: Map<String, Long> = emptyMap() // viewerUid -> timestamp
+  val viewers: Map<String, Long> = emptyMap(), // viewerUid -> timestamp
+  val privacy: String = "everyone", // "everyone", "friends"
+  val allowedFriends: List<String> = emptyList()
 ) {
   fun toMap(): Map<String, Any?> = mapOf(
     "id" to id,
@@ -28,7 +30,9 @@ data class StatusUpdate(
     "imageUrl" to imageUrl,
     "mediaType" to mediaType,
     "timestamp" to timestamp,
-    "viewers" to viewers
+    "viewers" to viewers,
+    "privacy" to privacy,
+    "allowedFriends" to allowedFriends
   )
 
   companion object {
@@ -43,7 +47,9 @@ data class StatusUpdate(
         imageUrl = (map["imageUrl"] as? String) ?: (map["mediaUrl"] as? String) ?: "",
         mediaType = map["mediaType"] as? String ?: "image",
         timestamp = (map["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
-        viewers = (map["viewers"] as? Map<String, Number>)?.mapValues { it.value.toLong() } ?: emptyMap()
+        viewers = (map["viewers"] as? Map<String, Number>)?.mapValues { it.value.toLong() } ?: emptyMap(),
+        privacy = map["privacy"] as? String ?: "everyone",
+        allowedFriends = (map["allowedFriends"] as? List<String>) ?: emptyList()
       )
     }
   }

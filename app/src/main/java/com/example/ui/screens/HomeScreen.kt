@@ -62,6 +62,13 @@ fun HomeScreen(
 ) {
   var selectedTab by rememberSaveable { mutableStateOf(initialTab) } // "Chats", "Calls", "Updates", "Profile"
 
+  val conversations by viewModel.conversations.collectAsState()
+  val currentUser by viewModel.userProfile.collectAsState()
+  val unreadChatsCount = remember(conversations, currentUser) {
+    val myUid = currentUser?.uid ?: ""
+    conversations.sumOf { (it.unreadCounts[myUid] ?: 0) as Int }
+  }
+
   // Android system Back button handler:
   // When on Calls, Updates, or Profile screen, pressing Back returns directly to the main Chat screen (Chat List) in one press.
   // When on Chats screen (main destination), BackHandler is disabled to allow normal activity lifecycle.
@@ -75,7 +82,8 @@ fun HomeScreen(
       bottomBar = {
         BlurCapsuleDock(
           selectedTab = selectedTab,
-          onTabSelected = { selectedTab = it }
+          onTabSelected = { selectedTab = it },
+          unreadChatsCount = unreadChatsCount
         )
       }
     ) { innerPadding ->
@@ -84,9 +92,8 @@ fun HomeScreen(
           .fillMaxSize()
           .padding(innerPadding)
       ) {
-        LiquidDropScreenTransition(
-          targetState = selectedTab,
-          durationMillis = 300
+        TabScreenTransition(
+          selectedTab = selectedTab
         ) { tab ->
           when (tab) {
             "Chats" -> ChatsTab(
@@ -434,7 +441,7 @@ fun ChatsTab(
                   photoUrl = avatar,
                   name = title,
                   size = 52.dp,
-                  isOnline = conv.type == "direct"
+                  isOnline = false
                 )
               }
 
@@ -850,7 +857,20 @@ fun UpdatesTab(viewModel: PinggoViewModel, onOpenCamera: () -> Unit) {
 
   val myUid = user?.uid ?: ""
   val myUpdates = remember(updates, myUid) { updates.filter { it.userId == myUid } }
-  val otherUpdates = remember(updates, myUid) { updates.filter { it.userId != myUid } }
+  val otherUpdates = remember(updates, myUid, user, viewModel.cachedBlockedUsers.size) {
+    updates.filter { update ->
+      if (update.userId == myUid) return@filter false
+      // Filter out blocked users (both profile and local cache)
+      if (user?.blockedUsers?.contains(update.userId) == true || viewModel.cachedBlockedUsers.contains(update.userId)) return@filter false
+
+      // Enforce status privacy
+      when (update.privacy) {
+        "nobody" -> false
+        "friends" -> (user?.friends?.contains(update.userId) == true) || update.allowedFriends.contains(myUid)
+        else -> true // "everyone"
+      }
+    }
+  }
 
   Column(
     modifier = Modifier
