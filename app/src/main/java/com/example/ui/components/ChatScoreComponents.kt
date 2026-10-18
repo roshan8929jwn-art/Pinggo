@@ -39,6 +39,33 @@ import com.example.ui.theme.*
 import kotlinx.coroutines.delay
 
 /**
+ * Compact Streak-only badge for Chats screen conversation list items.
+ * Shows only the other user's consecutive day streak with fire emoji: "🔥 X days".
+ * If streak is zero or unavailable, nothing is displayed.
+ */
+@Composable
+fun ChatStreakBadge(
+  streakCount: Int,
+  modifier: Modifier = Modifier
+) {
+  if (streakCount <= 0) return
+  Surface(
+    modifier = modifier.testTag("chat_streak_badge"),
+    color = Color(0xFFFF5722).copy(alpha = 0.12f),
+    shape = RoundedCornerShape(10.dp),
+    border = BorderStroke(0.5.dp, Color(0xFFFF5722).copy(alpha = 0.35f))
+  ) {
+    Text(
+      text = "🔥 $streakCount ${if (streakCount == 1) "day" else "days"}",
+      fontSize = 11.sp,
+      fontWeight = FontWeight.Bold,
+      color = Color(0xFFFF5722),
+      modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+    )
+  }
+}
+
+/**
  * Compact Chat Score badge for conversation list items and user headings.
  */
 @Composable
@@ -76,6 +103,130 @@ fun ChatScoreBadge(
           fontWeight = FontWeight.SemiBold,
           color = Color(0xFFFF5722)
         )
+      }
+    }
+  }
+}
+
+/**
+ * Prominent Profile Chat Score Card.
+ * Displays: 💬 Chat Score: 1,250 prominently.
+ * Compact section beneath total score showing current level and daily streak.
+ */
+@Composable
+fun ProfileChatScoreCard(
+  user: User,
+  modifier: Modifier = Modifier
+) {
+  val score = user.chatScore
+  val level = ChatLevel.fromScore(score)
+  val streak = user.streakCount
+
+  GlassCard(
+    modifier = modifier
+      .fillMaxWidth()
+      .testTag("profile_chat_score_card")
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(18.dp),
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+      // Prominent Chat Score headline
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+      ) {
+        Text(
+          text = "💬",
+          fontSize = 22.sp
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = "Chat Score: ",
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.Bold,
+          color = LightPrimaryText
+        )
+        Text(
+          text = "%,d".format(score),
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.ExtraBold,
+          color = PinggoPinkPrimary
+        )
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // Compact section beneath total score showing current level and daily streak
+      Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = PinggoOffWhite,
+        border = BorderStroke(1.dp, SolidBorderColor),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+          horizontalArrangement = Arrangement.SpaceEvenly,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          // Current Level
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            Text(text = level.badge, fontSize = 16.sp)
+            Column {
+              Text(
+                text = "LEVEL",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = LightSecondaryText,
+                letterSpacing = 0.5.sp
+              )
+              Text(
+                text = "Level ${level.level}: ${level.title}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = LightPrimaryText
+              )
+            }
+          }
+
+          // Vertical divider
+          Box(
+            modifier = Modifier
+              .height(24.dp)
+              .width(1.dp)
+              .background(SolidBorderColor)
+          )
+
+          // Daily Streak
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            Text(text = "🔥", fontSize = 16.sp)
+            Column {
+              Text(
+                text = "DAILY STREAK",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = LightSecondaryText,
+                letterSpacing = 0.5.sp
+              )
+              Text(
+                text = if (streak > 0) "$streak ${if (streak == 1) "day" else "days"}" else "0 days",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (streak > 0) Color(0xFFFF5722) else LightSecondaryText
+              )
+            }
+          }
+        }
       }
     }
   }

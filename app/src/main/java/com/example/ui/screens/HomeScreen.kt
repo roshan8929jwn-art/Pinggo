@@ -48,6 +48,7 @@ import com.example.viewmodel.PinggoViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.flow.flowOf
 
 @Composable
 fun HomeScreen(
@@ -64,16 +65,6 @@ fun HomeScreen(
 
   val conversations by viewModel.conversations.collectAsState()
   val currentUser by viewModel.userProfile.collectAsState()
-  val showLeaderboard by viewModel.showLeaderboardDialog.collectAsState()
-  val leaderboardList by viewModel.leaderboard.collectAsState()
-  val isLoadingLeaderboard by viewModel.isLoadingLeaderboard.collectAsState()
-  var latestScoreEvent by remember { mutableStateOf<com.example.model.ScoreEvent?>(null) }
-
-  LaunchedEffect(Unit) {
-    viewModel.scoreEvent.collect { event ->
-      latestScoreEvent = event
-    }
-  }
 
   val unreadChatsCount = remember(conversations, currentUser) {
     val myUid = currentUser?.uid ?: ""
@@ -124,26 +115,6 @@ fun HomeScreen(
             )
           }
         }
-
-        // Subtle floating toast for message score, streaks, and level-ups
-        ScoreCelebrationToast(
-          event = latestScoreEvent,
-          onDismiss = { latestScoreEvent = null },
-          modifier = Modifier
-            .align(Alignment.TopCenter)
-            .statusBarsPadding()
-        )
-
-        // Public Community Leaderboard Dialog
-        if (showLeaderboard) {
-          LeaderboardDialog(
-            leaderboard = leaderboardList,
-            currentUserId = currentUser?.uid ?: "",
-            isLoading = isLoadingLeaderboard,
-            onRefresh = { viewModel.loadLeaderboard() },
-            onDismiss = { viewModel.closeLeaderboard() }
-          )
-        }
       }
     }
   }
@@ -177,7 +148,8 @@ fun ChatsTab(
     selectedConv = null
   }
 
-  val myUid = currentUser?.uid ?: ""
+  val authUser by viewModel.currentUser.collectAsState()
+  val myUid = currentUser?.uid?.ifEmpty { authUser?.uid ?: "" } ?: authUser?.uid ?: ""
 
   val myFriends = currentUser?.friends ?: emptyList()
 
@@ -269,14 +241,6 @@ fun ChatsTab(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
           ) {
-            LiquidBlurDropdownMenuItem(
-              text = "Leaderboard",
-              icon = Icons.Default.EmojiEvents,
-              onClick = {
-                showMenu = false
-                viewModel.openLeaderboard()
-              }
-            )
             LiquidBlurDropdownMenuItem(
               text = "New Group",
               icon = Icons.Default.Group,
@@ -445,23 +409,12 @@ fun ChatsTab(
         verticalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         items(filteredConversations, key = { it.id }) { conv ->
-          val title = conv.getTitle(myUid)
-          val avatar = conv.getAvatarUrl(myUid)
-          val unread = conv.unreadCounts[myUid] ?: 0
-          val otherUid = conv.participants.firstOrNull { it != myUid } ?: ""
-          val otherScoreUser = userScores[otherUid]
-          val otherScore = otherScoreUser?.chatScore ?: 0L
-          val otherStreak = otherScoreUser?.streakCount ?: 0
-
           val isSelected = selectedConv?.id == conv.id
-          val mutedUntil = conv.mutedUntil[myUid] ?: 0L
-          val isMuted = conv.mutedBy.contains(myUid) && (mutedUntil == -1L || mutedUntil > System.currentTimeMillis())
-          val isPinned = conv.pinnedBy.contains(myUid)
-
-          GlassCard(
-            modifier = Modifier.fillMaxWidth().then(
-              if (isSelected) Modifier.border(1.dp, PinggoPinkPrimary.copy(alpha = 0.5f), RoundedCornerShape(22.dp)) else Modifier
-            ),
+          ConversationRowItem(
+            conv = conv,
+            myUid = myUid,
+            isSelected = isSelected,
+            viewModel = viewModel,
             onClick = {
               if (selectedConv != null) {
                 selectedConv = if (isSelected) null else conv
@@ -473,112 +426,7 @@ fun ChatsTab(
             onLongClick = {
               selectedConv = conv
             }
-          ) {
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Box {
-                GlassAvatar(
-                  photoUrl = avatar,
-                  name = title,
-                  size = 52.dp,
-                  isOnline = false
-                )
-              }
-
-              Spacer(modifier = Modifier.width(14.dp))
-
-              Column(modifier = Modifier.weight(1f)) {
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Row(
-                    modifier = Modifier.weight(1f, fill = false),
-                    verticalAlignment = Alignment.CenterVertically
-                  ) {
-                    Text(
-                      text = title,
-                      style = MaterialTheme.typography.bodyLarge,
-                      fontWeight = FontWeight.Bold,
-                      color = LightPrimaryText,
-                      maxLines = 1,
-                      overflow = TextOverflow.Ellipsis
-                    )
-                    if (conv.type == "direct" && otherScore > 0L) {
-                      Spacer(modifier = Modifier.width(6.dp))
-                      ChatScoreBadge(score = otherScore, streakCount = otherStreak)
-                    }
-                  }
-                  Text(
-                    text = formatTimestamp(conv.lastMessageTimestamp),
-                    fontSize = 11.sp,
-                    color = LightSecondaryText.copy(alpha = 0.7f)
-                  )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Text(
-                    text = conv.lastMessage.ifEmpty { "Start a conversation" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = LightSecondaryText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                  )
-
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isMuted) {
-                      Icon(
-                        imageVector = Icons.Default.NotificationsOff,
-                        contentDescription = "Muted",
-                        tint = LightSecondaryText.copy(alpha = 0.5f),
-                        modifier = Modifier.size(14.dp)
-                      )
-                      Spacer(modifier = Modifier.width(4.dp))
-                    }
-                    
-                    if (isPinned) {
-                      Icon(
-                        imageVector = Icons.Default.PushPin,
-                        contentDescription = "Pinned",
-                        tint = PinggoPinkPrimary.copy(alpha = 0.7f),
-                        modifier = Modifier.size(14.dp)
-                      )
-                      Spacer(modifier = Modifier.width(6.dp))
-                    }
-
-                    if (unread > 0) {
-                      Box(
-                        modifier = Modifier
-                          .size(20.dp)
-                          .clip(CircleShape)
-                          .background(UnreadBadgeColor),
-                        contentAlignment = Alignment.Center
-                      ) {
-                        Text(
-                          text = if (unread > 9) "9+" else unread.toString(),
-                          color = Color.White,
-                          fontSize = 10.sp,
-                          fontWeight = FontWeight.Bold
-                        )
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+          )
         }
       }
     }
@@ -725,6 +573,162 @@ fun ChatsTab(
   }
 }
 
+@Composable
+fun ConversationRowItem(
+  conv: Conversation,
+  myUid: String,
+  isSelected: Boolean,
+  viewModel: PinggoViewModel,
+  onClick: () -> Unit,
+  onLongClick: () -> Unit
+) {
+  val otherUid = remember(conv, myUid) {
+    val allParticipants = (conv.participants + conv.participantDetails.keys).filter { it.isNotEmpty() }.distinct()
+    if (allParticipants.size <= 1) {
+      allParticipants.firstOrNull() ?: ""
+    } else {
+      allParticipants.firstOrNull { myUid.isNotEmpty() && it != myUid }
+        ?: allParticipants.firstOrNull { it == "ai_sparky" }
+        ?: allParticipants.lastOrNull()
+        ?: ""
+    }
+  }
+  val isOneToOne = remember(conv) {
+    conv.type == "direct" || conv.type == "ai" || (conv.type != "group" && (conv.participants.size == 2 || conv.participantDetails.size == 2))
+  }
+
+  // Real-time Firestore snapshot binding to the other user's actual document
+  val otherUserFlow = remember(otherUid) {
+    if (otherUid.isNotEmpty()) viewModel.getUserFlow(otherUid) else flowOf(null)
+  }
+  val otherUser by otherUserFlow.collectAsState(initial = viewModel.userScoresMap.value[otherUid])
+  val otherStreak = if (isOneToOne) {
+    val streak = otherUser?.streakCount ?: viewModel.userScoresMap.value[otherUid]?.streakCount ?: 0
+    if (streak <= 0 && otherUid == "ai_sparky") 7 else streak
+  } else 0
+
+  val title = conv.getTitle(myUid)
+  val avatar = conv.getAvatarUrl(myUid)
+  val unread = conv.unreadCounts[myUid] ?: 0
+  val mutedUntil = conv.mutedUntil[myUid] ?: 0L
+  val isMuted = conv.mutedBy.contains(myUid) && (mutedUntil == -1L || mutedUntil > System.currentTimeMillis())
+  val isPinned = conv.pinnedBy.contains(myUid)
+
+  GlassCard(
+    modifier = Modifier.fillMaxWidth().then(
+      if (isSelected) Modifier.border(1.dp, PinggoPinkPrimary.copy(alpha = 0.5f), RoundedCornerShape(22.dp)) else Modifier
+    ),
+    onClick = onClick,
+    onLongClick = onLongClick
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(12.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Box {
+        GlassAvatar(
+          photoUrl = avatar,
+          name = title,
+          size = 52.dp,
+          isOnline = false
+        )
+      }
+
+      Spacer(modifier = Modifier.width(14.dp))
+
+      Column(modifier = Modifier.weight(1f)) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = title,
+              style = MaterialTheme.typography.bodyLarge,
+              fontWeight = FontWeight.Bold,
+              color = LightPrimaryText,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              modifier = Modifier.weight(1f, fill = false)
+            )
+            if (isOneToOne && otherStreak > 0) {
+              Spacer(modifier = Modifier.width(6.dp))
+              ChatStreakBadge(streakCount = otherStreak)
+            }
+          }
+          Spacer(modifier = Modifier.width(8.dp))
+          Text(
+            text = formatTimestamp(conv.lastMessageTimestamp),
+            fontSize = 11.sp,
+            color = LightSecondaryText.copy(alpha = 0.7f)
+          )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = conv.lastMessage.ifEmpty { "Start a conversation" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = LightSecondaryText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+          )
+
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isMuted) {
+              Icon(
+                imageVector = Icons.Default.NotificationsOff,
+                contentDescription = "Muted",
+                tint = LightSecondaryText.copy(alpha = 0.5f),
+                modifier = Modifier.size(14.dp)
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+            }
+
+            if (isPinned) {
+              Icon(
+                imageVector = Icons.Default.PushPin,
+                contentDescription = "Pinned",
+                tint = PinggoPinkPrimary.copy(alpha = 0.7f),
+                modifier = Modifier.size(14.dp)
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+            }
+
+            if (unread > 0) {
+              Box(
+                modifier = Modifier
+                  .size(20.dp)
+                  .clip(CircleShape)
+                  .background(UnreadBadgeColor),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = if (unread > 9) "9+" else unread.toString(),
+                  color = Color.White,
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Bold
+                )
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 
 @Composable
 fun CallsTab(viewModel: PinggoViewModel, onOpenSearch: () -> Unit) {
@@ -1544,19 +1548,17 @@ fun ProfileTab(
       }
     }
 
-    // Real Chat Score & Daily Streaks Summary Card
+    // Real Stored Chat Score & Daily Streaks Card
     if (user != null) {
       Spacer(modifier = Modifier.height(14.dp))
-      ChatScoreSummaryCard(
-        user = user!!,
-        onViewLeaderboard = { viewModel.openLeaderboard() }
+      ProfileChatScoreCard(
+        user = user!!
       )
     }
 
     Spacer(modifier = Modifier.height(14.dp))
 
     val settingsOptions = listOf(
-      Triple("Leaderboard Rankings", Icons.Default.EmojiEvents, "leaderboard"),
       Triple("Account (Edit Profile)", Icons.Default.Person, "account"),
       Triple("Privacy", Icons.Default.Lock, "privacy"),
       Triple("Notifications", Icons.Default.Notifications, "notifications"),
@@ -1569,9 +1571,7 @@ fun ProfileTab(
         GlassCard(
           modifier = Modifier.fillMaxWidth(),
           onClick = {
-            if (key == "leaderboard") {
-              viewModel.openLeaderboard()
-            } else if (key == "account") {
+            if (key == "account") {
               showEditProfileDialog = true
             } else {
               onOpenSettings(key)

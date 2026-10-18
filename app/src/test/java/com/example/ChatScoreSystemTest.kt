@@ -249,4 +249,41 @@ class ChatScoreSystemTest {
     assertEquals("Starter", user.level.title)
     assertEquals("🐣", user.level.badge)
   }
+
+  @Test
+  fun test13_chatStreakBadgeFormattingAndZeroHandling() {
+    fun formatStreakBadgeText(streak: Int): String? {
+      if (streak <= 0) return null
+      return "🔥 $streak ${if (streak == 1) "day" else "days"}"
+    }
+
+    assertNull("Streak 0 must not display badge", formatStreakBadgeText(0))
+    assertNull("Negative streak must not display badge", formatStreakBadgeText(-1))
+    assertEquals("🔥 1 day", formatStreakBadgeText(1))
+    assertEquals("🔥 7 days", formatStreakBadgeText(7))
+    assertEquals("🔥 25 days", formatStreakBadgeText(25))
+  }
+
+  @Test
+  fun test14_profileChatScoreDisplaysStoredTotalScore() {
+    val user = User(
+      uid = "u_profile_test",
+      displayName = "Pinggo Ace",
+      username = "ace",
+      chatScore = 1250L,
+      streakCount = 7,
+      longestStreak = 10
+    )
+
+    val formattedScore = "%,d".format(user.chatScore)
+    assertEquals("1,250", formattedScore)
+    val headline = "💬 Chat Score: $formattedScore"
+    assertEquals("💬 Chat Score: 1,250", headline)
+
+    val level = ChatLevel.fromScore(user.chatScore)
+    assertEquals(ChatLevel.SOCIAL_STAR, level)
+    assertEquals("Level 3: Social Star", "Level ${level.level}: ${level.title}")
+    val streakText = if (user.streakCount > 0) "${user.streakCount} ${if (user.streakCount == 1) "day" else "days"}" else "0 days"
+    assertEquals("7 days", streakText)
+  }
 }

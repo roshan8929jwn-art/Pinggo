@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -193,7 +194,21 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private val _showLeaderboardDialog = MutableStateFlow(false)
   val showLeaderboardDialog: StateFlow<Boolean> = _showLeaderboardDialog.asStateFlow()
 
-  private val _userScoresMap = MutableStateFlow<Map<String, User>>(emptyMap())
+  private val _userScoresMap = MutableStateFlow<Map<String, User>>(
+    mapOf(
+      "ai_sparky" to User(
+        uid = "ai_sparky",
+        displayName = "Pinggo AI Assistant",
+        username = "pinggo_ai",
+        photoURL = "",
+        bio = "Pinggo AI Smart Assistant 🐧",
+        chatScore = 2450L,
+        streakCount = 7,
+        longestStreak = 14,
+        isOnline = true
+      )
+    )
+  )
   val userScoresMap: StateFlow<Map<String, User>> = _userScoresMap.asStateFlow()
 
   init {
@@ -411,6 +426,9 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       bio = "Exploring the Pinggo Liquid Glass Experience ✨",
       createdAt = System.currentTimeMillis(),
       isOnline = true,
+      chatScore = 1250L,
+      streakCount = 7,
+      longestStreak = 14,
       privacyLastSeen = cachedPrivacyLastSeen,
       privacyReadReceipts = cachedPrivacyReadReceipts,
       privacyStatus = cachedPrivacyStatus,
@@ -418,6 +436,21 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     )
     _guestProfile.value = guest
     loadBlockedUsers()
+
+    val aiUser = User(
+      uid = "ai_sparky",
+      displayName = "Pinggo AI Assistant",
+      username = "pinggo_ai",
+      photoURL = "",
+      bio = "Pinggo AI Smart Assistant 🐧",
+      chatScore = 2450L,
+      streakCount = 7,
+      longestStreak = 14,
+      isOnline = true
+    )
+    val currentMap = _userScoresMap.value.toMutableMap()
+    currentMap["ai_sparky"] = aiUser
+    _userScoresMap.value = currentMap
 
     val demoDetails = mapOf(
       guest.uid to ParticipantInfo(guest.uid, guest.displayName, guest.username, guest.photoURL),
@@ -427,7 +460,7 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       Conversation(
         id = "conv_ai_demo",
         groupName = "Pinggo AI Assistant",
-        type = "ai",
+        type = "direct",
         participants = listOf(guest.uid, "ai_sparky"),
         participantDetails = demoDetails,
         lastMessage = "Welcome to Pinggo! You are exploring in Demo Mode. Connect Firebase in Firebase Console to enable global cloud sync!",
@@ -641,8 +674,10 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
         )
         _conversations.value = sorted
 
-        // Cache participant profiles for instant public score badges in chat list
-        val otherUids = list.mapNotNull { it.getOtherParticipant(userId)?.uid }.filter { it.isNotEmpty() }.distinct()
+        // Cache participant profiles for instant daily streak badge in chat list and keep updated
+        val otherUids = list.mapNotNull { conv ->
+          conv.participants.firstOrNull { it != userId }
+        }.filter { it.isNotEmpty() }.distinct()
         if (otherUids.isNotEmpty()) {
           launch {
             val users = authRepo.fetchUsersByIds(otherUids)
@@ -650,6 +685,17 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
               val currentMap = _userScoresMap.value.toMutableMap()
               users.forEach { u -> currentMap[u.uid] = u }
               _userScoresMap.value = currentMap
+            }
+          }
+          otherUids.forEach { otherUid ->
+            launch {
+              authRepo.getUserFlow(otherUid).collect { user ->
+                if (user != null) {
+                  val currentMap = _userScoresMap.value.toMutableMap()
+                  currentMap[user.uid] = user
+                  _userScoresMap.value = currentMap
+                }
+              }
             }
           }
         }
@@ -1195,7 +1241,23 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
     showToast("User unblocked")
   }
 
-  fun getUserFlow(uid: String): Flow<User?> = authRepo.getUserFlow(uid)
+  fun getUserFlow(uid: String): Flow<User?> {
+    if (uid == "ai_sparky") {
+      val aiUser = User(
+        uid = "ai_sparky",
+        displayName = "Pinggo AI Assistant",
+        username = "pinggo_ai",
+        photoURL = "",
+        bio = "Pinggo AI Smart Assistant 🐧",
+        chatScore = 2450L,
+        streakCount = 7,
+        longestStreak = 14,
+        isOnline = true
+      )
+      return flowOf(aiUser)
+    }
+    return authRepo.getUserFlow(uid)
+  }
 
   // Guest Account & Auth
   fun registerGuestAccount(
