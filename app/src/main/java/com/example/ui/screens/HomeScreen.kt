@@ -64,6 +64,17 @@ fun HomeScreen(
 
   val conversations by viewModel.conversations.collectAsState()
   val currentUser by viewModel.userProfile.collectAsState()
+  val showLeaderboard by viewModel.showLeaderboardDialog.collectAsState()
+  val leaderboardList by viewModel.leaderboard.collectAsState()
+  val isLoadingLeaderboard by viewModel.isLoadingLeaderboard.collectAsState()
+  var latestScoreEvent by remember { mutableStateOf<com.example.model.ScoreEvent?>(null) }
+
+  LaunchedEffect(Unit) {
+    viewModel.scoreEvent.collect { event ->
+      latestScoreEvent = event
+    }
+  }
+
   val unreadChatsCount = remember(conversations, currentUser) {
     val myUid = currentUser?.uid ?: ""
     conversations.sumOf { (it.unreadCounts[myUid] ?: 0) as Int }
@@ -113,6 +124,26 @@ fun HomeScreen(
             )
           }
         }
+
+        // Subtle floating toast for message score, streaks, and level-ups
+        ScoreCelebrationToast(
+          event = latestScoreEvent,
+          onDismiss = { latestScoreEvent = null },
+          modifier = Modifier
+            .align(Alignment.TopCenter)
+            .statusBarsPadding()
+        )
+
+        // Public Community Leaderboard Dialog
+        if (showLeaderboard) {
+          LeaderboardDialog(
+            leaderboard = leaderboardList,
+            currentUserId = currentUser?.uid ?: "",
+            isLoading = isLoadingLeaderboard,
+            onRefresh = { viewModel.loadLeaderboard() },
+            onDismiss = { viewModel.closeLeaderboard() }
+          )
+        }
       }
     }
   }
@@ -133,6 +164,7 @@ fun ChatsTab(
   val currentUser by viewModel.userProfile.collectAsState()
   val selectedFilter by viewModel.selectedFilter.collectAsState()
   val notifications by viewModel.notifications.collectAsState()
+  val userScores by viewModel.userScoresMap.collectAsState()
   val unreadNotifications = remember(notifications) { notifications.count { !it.isRead } }
 
   var searchQuery by remember { mutableStateOf("") }
@@ -237,6 +269,14 @@ fun ChatsTab(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
           ) {
+            LiquidBlurDropdownMenuItem(
+              text = "Leaderboard",
+              icon = Icons.Default.EmojiEvents,
+              onClick = {
+                showMenu = false
+                viewModel.openLeaderboard()
+              }
+            )
             LiquidBlurDropdownMenuItem(
               text = "New Group",
               icon = Icons.Default.Group,
@@ -408,6 +448,10 @@ fun ChatsTab(
           val title = conv.getTitle(myUid)
           val avatar = conv.getAvatarUrl(myUid)
           val unread = conv.unreadCounts[myUid] ?: 0
+          val otherUid = conv.participants.firstOrNull { it != myUid } ?: ""
+          val otherScoreUser = userScores[otherUid]
+          val otherScore = otherScoreUser?.chatScore ?: 0L
+          val otherStreak = otherScoreUser?.streakCount ?: 0
 
           val isSelected = selectedConv?.id == conv.id
           val mutedUntil = conv.mutedUntil[myUid] ?: 0L
@@ -453,7 +497,10 @@ fun ChatsTab(
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Row(verticalAlignment = Alignment.CenterVertically) {
+                  Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
                     Text(
                       text = title,
                       style = MaterialTheme.typography.bodyLarge,
@@ -462,6 +509,10 @@ fun ChatsTab(
                       maxLines = 1,
                       overflow = TextOverflow.Ellipsis
                     )
+                    if (conv.type == "direct" && otherScore > 0L) {
+                      Spacer(modifier = Modifier.width(6.dp))
+                      ChatScoreBadge(score = otherScore, streakCount = otherStreak)
+                    }
                   }
                   Text(
                     text = formatTimestamp(conv.lastMessageTimestamp),
@@ -1493,9 +1544,19 @@ fun ProfileTab(
       }
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
+    // Real Chat Score & Daily Streaks Summary Card
+    if (user != null) {
+      Spacer(modifier = Modifier.height(14.dp))
+      ChatScoreSummaryCard(
+        user = user!!,
+        onViewLeaderboard = { viewModel.openLeaderboard() }
+      )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
 
     val settingsOptions = listOf(
+      Triple("Leaderboard Rankings", Icons.Default.EmojiEvents, "leaderboard"),
       Triple("Account (Edit Profile)", Icons.Default.Person, "account"),
       Triple("Privacy", Icons.Default.Lock, "privacy"),
       Triple("Notifications", Icons.Default.Notifications, "notifications"),
@@ -1508,7 +1569,9 @@ fun ProfileTab(
         GlassCard(
           modifier = Modifier.fillMaxWidth(),
           onClick = {
-            if (key == "account") {
+            if (key == "leaderboard") {
+              viewModel.openLeaderboard()
+            } else if (key == "account") {
               showEditProfileDialog = true
             } else {
               onOpenSettings(key)

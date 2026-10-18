@@ -31,7 +31,13 @@ data class User(
   val role: String = "user", // "user", "admin"
   val isBanned: Boolean = false,
   val banReason: String = "",
-  val isVerified: Boolean = false
+  val isVerified: Boolean = false,
+  val chatScore: Long = 0L,
+  val streakCount: Int = 0,
+  val longestStreak: Int = 0,
+  val lastActiveDate: String = "",
+  val dailyPointsCount: Int = 0,
+  val dailyPointsDate: String = ""
 ) {
   fun toMap(): Map<String, Any?> {
     return mapOf(
@@ -65,7 +71,13 @@ data class User(
       "role" to role,
       "isBanned" to isBanned,
       "banReason" to banReason,
-      "isVerified" to isVerified
+      "isVerified" to isVerified,
+      "chatScore" to chatScore,
+      "streakCount" to streakCount,
+      "longestStreak" to longestStreak,
+      "lastActiveDate" to lastActiveDate,
+      "dailyPointsCount" to dailyPointsCount,
+      "dailyPointsDate" to dailyPointsDate
     )
   }
 
@@ -103,11 +115,20 @@ data class User(
         role = map["role"] as? String ?: "user",
         isBanned = map["isBanned"] as? Boolean ?: false,
         banReason = map["banReason"] as? String ?: "",
-        isVerified = map["isVerified"] as? Boolean ?: false
+        isVerified = map["isVerified"] as? Boolean ?: false,
+        chatScore = (map["chatScore"] as? Number)?.toLong() ?: 0L,
+        streakCount = (map["streakCount"] as? Number)?.toInt() ?: 0,
+        longestStreak = (map["longestStreak"] as? Number)?.toInt() ?: 0,
+        lastActiveDate = map["lastActiveDate"] as? String ?: "",
+        dailyPointsCount = (map["dailyPointsCount"] as? Number)?.toInt() ?: 0,
+        dailyPointsDate = map["dailyPointsDate"] as? String ?: ""
       )
     }
   }
 }
+
+val User.level: ChatLevel
+  get() = ChatLevel.fromScore(chatScore)
 
 val User.handle: String
   get() = if (username.startsWith("@")) username else "@$username"

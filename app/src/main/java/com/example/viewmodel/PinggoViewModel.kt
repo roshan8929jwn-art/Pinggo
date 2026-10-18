@@ -16,15 +16,20 @@ import com.example.model.StatusUpdate
 import com.example.model.User
 import com.example.ui.theme.AppThemeMode
 import com.example.model.ParticipantInfo
+import com.example.model.ChatLevel
+import com.example.model.ScoreAwardResult
+import com.example.model.ScoreEvent
 import com.example.util.FirebaseDiagnosticInfo
 import com.example.util.FirebaseInitializer
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -175,6 +180,22 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
   private val _outgoingRequests = MutableStateFlow<List<com.example.model.FriendRequest>>(emptyList())
   val outgoingRequests: StateFlow<List<com.example.model.FriendRequest>> = _outgoingRequests.asStateFlow()
 
+  // Chat Score, Daily Streaks & Leaderboard
+  private val _scoreEvent = MutableSharedFlow<ScoreEvent>(extraBufferCapacity = 10)
+  val scoreEvent = _scoreEvent.asSharedFlow()
+
+  private val _leaderboard = MutableStateFlow<List<User>>(emptyList())
+  val leaderboard: StateFlow<List<User>> = _leaderboard.asStateFlow()
+
+  private val _isLoadingLeaderboard = MutableStateFlow(false)
+  val isLoadingLeaderboard: StateFlow<Boolean> = _isLoadingLeaderboard.asStateFlow()
+
+  private val _showLeaderboardDialog = MutableStateFlow(false)
+  val showLeaderboardDialog: StateFlow<Boolean> = _showLeaderboardDialog.asStateFlow()
+
+  private val _userScoresMap = MutableStateFlow<Map<String, User>>(emptyMap())
+  val userScoresMap: StateFlow<Map<String, User>> = _userScoresMap.asStateFlow()
+
   init {
     val prefs = application.getSharedPreferences("pinggo_settings", android.content.Context.MODE_PRIVATE)
     val savedDesign = prefs.getString("glass_design", "CLEAR") ?: "CLEAR"
@@ -188,6 +209,29 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
       AppThemeMode.valueOf(savedThemeMode)
     } catch (e: Exception) {
       AppThemeMode.SYSTEM
+    }
+
+    // Observe score award events from authoritative transaction to trigger subtle UI celebrations
+    viewModelScope.launch {
+      chatRepo.latestScoreAward.collect { res ->
+        if (res.pointsAwarded > 0) {
+          _scoreEvent.emit(
+            ScoreEvent(
+              pointsDelta = res.pointsAwarded,
+              streakBonus = res.streakBonus,
+              currentStreak = res.currentStreak,
+              isStreakMilestone = res.isStreakMilestone,
+              level = res.currentLevel,
+              isLevelUp = res.isLevelUp,
+              messageText = when {
+                res.isLevelUp -> "🎉 Level Up! You reached Level ${res.currentLevel.level}: ${res.currentLevel.badge} ${res.currentLevel.title}"
+                res.isStreakMilestone -> "🔥 ${res.currentStreak}-Day Streak Milestone! +${res.streakBonus} PTS"
+                else -> "+${res.pointsAwarded} PTS"
+              }
+            )
+          )
+        }
+      }
     }
 
     // Observe user profile to keep local privacy prefs & cached fields in sync
@@ -596,7 +640,44 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
             .thenByDescending { it.lastMessageTimestamp }
         )
         _conversations.value = sorted
+
+        // Cache participant profiles for instant public score badges in chat list
+        val otherUids = list.mapNotNull { it.getOtherParticipant(userId)?.uid }.filter { it.isNotEmpty() }.distinct()
+        if (otherUids.isNotEmpty()) {
+          launch {
+            val users = authRepo.fetchUsersByIds(otherUids)
+            if (users.isNotEmpty()) {
+              val currentMap = _userScoresMap.value.toMutableMap()
+              users.forEach { u -> currentMap[u.uid] = u }
+              _userScoresMap.value = currentMap
+            }
+          }
+        }
       }
+    }
+  }
+
+  fun openLeaderboard() {
+    _showLeaderboardDialog.value = true
+    loadLeaderboard()
+  }
+
+  fun closeLeaderboard() {
+    _showLeaderboardDialog.value = false
+  }
+
+  fun loadLeaderboard() {
+    viewModelScope.launch {
+      _isLoadingLeaderboard.value = true
+      val list = chatRepo.getLeaderboard(limit = 50)
+      if (list.isNotEmpty()) {
+        _leaderboard.value = list
+      } else {
+        // Fallback with current user if offline or database empty
+        val me = userProfile.value
+        _leaderboard.value = if (me != null) listOf(me) else emptyList()
+      }
+      _isLoadingLeaderboard.value = false
     }
   }
 
@@ -721,6 +802,33 @@ class PinggoViewModel(application: Application) : AndroidViewModel(application) 
         timestamp = System.currentTimeMillis()
       )
       _activeMessages.value = _activeMessages.value + msg
+
+      // Award chat score in demo / guest mode
+      val currentScore = user.chatScore
+      val newScore = currentScore + 1
+      val prevLevel = ChatLevel.fromScore(currentScore)
+      val newLevel = ChatLevel.fromScore(newScore)
+      val newStreak = if (user.streakCount <= 0) 1 else user.streakCount
+      val updatedGuest = user.copy(
+        chatScore = newScore,
+        streakCount = newStreak,
+        longestStreak = maxOf(user.longestStreak, newStreak)
+      )
+      _guestProfile.value = updatedGuest
+      viewModelScope.launch {
+        _scoreEvent.emit(
+          ScoreEvent(
+            pointsDelta = 1,
+            streakBonus = 0,
+            currentStreak = newStreak,
+            isStreakMilestone = false,
+            level = newLevel,
+            isLevelUp = newLevel.level > prevLevel.level,
+            messageText = if (newLevel.level > prevLevel.level) "🎉 Level Up! You reached Level ${newLevel.level}: ${newLevel.badge} ${newLevel.title}" else "+1 PTS"
+          )
+        )
+      }
+
       viewModelScope.launch {
         delay(800)
         val aiReply = Message(

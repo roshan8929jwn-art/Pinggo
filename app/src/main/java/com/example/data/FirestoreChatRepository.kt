@@ -2,9 +2,11 @@ package com.example.data
 
 import android.util.Log
 import com.example.model.CallSession
+import com.example.model.ChatLevel
 import com.example.model.Conversation
 import com.example.model.Message
 import com.example.model.ParticipantInfo
+import com.example.model.ScoreAwardResult
 import com.example.model.StatusUpdate
 import com.example.model.User
 import com.google.firebase.firestore.FieldValue
@@ -16,9 +18,16 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 
 class FirestoreChatRepository {
+  val latestScoreAward = kotlinx.coroutines.flow.MutableSharedFlow<ScoreAwardResult>(extraBufferCapacity = 10)
+
   private val firestore: FirebaseFirestore?
     get() = try {
       FirebaseFirestore.getInstance()
@@ -371,6 +380,22 @@ class FirestoreChatRepository {
           "updatedAt" to now
         )
       ).await()
+
+      // Automatically award authoritative score and update daily streaks for eligible persisted message
+      try {
+        val convForScoring = if (convDoc.exists()) {
+          @Suppress("UNCHECKED_CAST")
+          val participants = convDoc.get("participants") as? List<String> ?: emptyList()
+          Conversation(
+            id = conversationId,
+            type = convDoc.getString("type") ?: "direct",
+            participants = participants
+          )
+        } else null
+        awardChatScoreForMessage(message, sender, convForScoring)
+      } catch (scoreEx: Exception) {
+        Log.w("FirestoreChatRepo", "Chat score award deferred: ${scoreEx.message}")
+      }
 
       Result.success(message)
     } catch (e: Exception) {
@@ -1168,5 +1193,188 @@ class FirestoreChatRepository {
         }
       }
     awaitClose { listener.remove() }
+  }
+
+  // --- Real Chat Score, Daily Streaks, and Levels ---
+
+  private fun getUtcDateString(timestamp: Long = System.currentTimeMillis()): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+    return sdf.format(Date(timestamp))
+  }
+
+  private fun getYesterdayUtcDateString(timestamp: Long = System.currentTimeMillis()): String {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    cal.timeInMillis = timestamp
+    cal.add(Calendar.DAY_OF_YEAR, -1)
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+    return sdf.format(cal.time)
+  }
+
+  /**
+   * Authoritative message score calculation & daily streak update with idempotency.
+   */
+  suspend fun awardChatScoreForMessage(
+    message: Message,
+    sender: User,
+    conversation: Conversation?
+  ): ScoreAwardResult {
+    if (message.id.isEmpty() || sender.uid.isEmpty()) {
+      return ScoreAwardResult(success = false, reason = "Invalid message or sender")
+    }
+    if (message.isDeleted) {
+      return ScoreAwardResult(success = false, reason = "Deleted message is ineligible")
+    }
+    val validTypes = setOf("text", "image", "voice", "file")
+    if (message.type !in validTypes) {
+      return ScoreAwardResult(success = false, reason = "Message type ${message.type} ineligible")
+    }
+    if (message.type == "text" && message.text.trim().isEmpty()) {
+      return ScoreAwardResult(success = false, reason = "Empty message")
+    }
+
+    // Exclude messages sent by user to themselves
+    if (conversation != null && conversation.type == "direct") {
+      val otherParticipants = conversation.participants.filter { it != sender.uid }
+      if (otherParticipants.isEmpty()) {
+        return ScoreAwardResult(success = false, reason = "Self messages ineligible")
+      }
+    }
+
+    val db = firestore ?: return ScoreAwardResult(success = false, reason = "Firestore unavailable")
+    val todayDate = getUtcDateString(message.timestamp)
+    val yesterdayDate = getYesterdayUtcDateString(message.timestamp)
+
+    return try {
+      val userRef = db.collection("users").document(sender.uid)
+      val eventRef = userRef.collection("score_events").document(message.id)
+
+      val result = db.runTransaction { transaction ->
+        // Check idempotency first: if event already exists, no-op
+        val existingEvent = transaction.get(eventRef)
+        if (existingEvent.exists()) {
+          return@runTransaction ScoreAwardResult(success = false, reason = "Already processed")
+        }
+
+        val userSnapshot = transaction.get(userRef)
+        val currentScore = (userSnapshot.get("chatScore") as? Number)?.toLong() ?: 0L
+        val currentStreak = (userSnapshot.get("streakCount") as? Number)?.toInt() ?: 0
+        val longestStreak = (userSnapshot.get("longestStreak") as? Number)?.toInt() ?: 0
+        val lastActiveDate = userSnapshot.getString("lastActiveDate") ?: ""
+        val dailyPointsDate = userSnapshot.getString("dailyPointsDate") ?: ""
+        val dailyPointsCount = (userSnapshot.get("dailyPointsCount") as? Number)?.toInt() ?: 0
+
+        // Anti-spam daily cap (max 300 points per day)
+        val todayPointsAccumulated = if (dailyPointsDate == todayDate) dailyPointsCount else 0
+        val isDailyCapped = todayPointsAccumulated >= 300
+        val messagePoints = if (isDailyCapped) 0 else 1
+
+        // Streak calculation
+        val newStreak: Int
+        val streakBonus: Int
+        val isStreakMilestone: Boolean
+
+        when (lastActiveDate) {
+          todayDate -> {
+            newStreak = if (currentStreak <= 0) 1 else currentStreak
+            streakBonus = 0
+            isStreakMilestone = false
+          }
+          yesterdayDate -> {
+            newStreak = currentStreak + 1
+            streakBonus = 5
+            isStreakMilestone = true
+          }
+          else -> {
+            newStreak = 1
+            // If user starts their first ever active streak (empty date), award 5 bonus points,
+            // otherwise a missed day resets the current streak to 1 without streak milestone bonus
+            streakBonus = if (lastActiveDate.isEmpty()) 5 else 0
+            isStreakMilestone = lastActiveDate.isEmpty()
+          }
+        }
+
+        val newLongestStreak = maxOf(longestStreak, newStreak)
+        val pointsDelta = messagePoints + streakBonus
+        val newScore = currentScore + pointsDelta
+
+        val previousLevel = ChatLevel.fromScore(currentScore)
+        val currentLevel = ChatLevel.fromScore(newScore)
+        val isLevelUp = currentLevel.level > previousLevel.level
+
+        // Idempotency event write
+        val eventData = mapOf(
+          "messageId" to message.id,
+          "conversationId" to message.conversationId,
+          "messagePoints" to messagePoints,
+          "streakBonus" to streakBonus,
+          "pointsDelta" to pointsDelta,
+          "date" to todayDate,
+          "timestamp" to System.currentTimeMillis()
+        )
+        transaction.set(eventRef, eventData)
+
+        // User document update
+        val userUpdates = mapOf(
+          "chatScore" to newScore,
+          "streakCount" to newStreak,
+          "longestStreak" to newLongestStreak,
+          "lastActiveDate" to todayDate,
+          "dailyPointsDate" to todayDate,
+          "dailyPointsCount" to (todayPointsAccumulated + pointsDelta)
+        )
+        transaction.set(userRef, userUpdates, SetOptions.merge())
+
+        ScoreAwardResult(
+          success = true,
+          pointsAwarded = pointsDelta,
+          totalScore = newScore,
+          streakBonus = streakBonus,
+          currentStreak = newStreak,
+          longestStreak = newLongestStreak,
+          previousLevel = previousLevel,
+          currentLevel = currentLevel,
+          isLevelUp = isLevelUp,
+          isStreakMilestone = isStreakMilestone
+        )
+      }.await()
+      if (result.success && result.pointsAwarded > 0) {
+        latestScoreAward.tryEmit(result)
+      }
+      result
+    } catch (e: Exception) {
+      Log.w("FirestoreChatRepo", "awardChatScoreForMessage error: ${e.message}")
+      ScoreAwardResult(success = false, reason = e.message ?: "Transaction failed")
+    }
+  }
+
+  /**
+   * Fetch public leaderboard ordered by chatScore descending
+   */
+  suspend fun getLeaderboard(limit: Int = 30): List<User> {
+    val db = firestore ?: return emptyList()
+    return try {
+      val snapshot = db.collection("users")
+        .orderBy("chatScore", Query.Direction.DESCENDING)
+        .limit(limit.toLong())
+        .get()
+        .await()
+      snapshot.documents.mapNotNull { doc ->
+        val data = doc.data ?: return@mapNotNull null
+        User.fromMap(data)
+      }
+    } catch (e: Exception) {
+      Log.w("FirestoreChatRepo", "getLeaderboard index fallback: ${e.message}")
+      try {
+        val allUsers = db.collection("users").limit(50).get().await()
+        allUsers.documents.mapNotNull { doc ->
+          val data = doc.data ?: return@mapNotNull null
+          User.fromMap(data)
+        }.sortedByDescending { it.chatScore }.take(limit)
+      } catch (e2: Exception) {
+        emptyList()
+      }
+    }
   }
 }

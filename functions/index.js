@@ -203,3 +203,144 @@ exports.ping = functions.https.onCall(async (data, context) => {
     projectId: process.env.GCLOUD_PROJECT || "gen-lang-client-0572544439"
   };
 });
+
+/**
+ * awardMessageScore: Authoritative server-side Cloud Function to award chat points.
+ * Validates authenticated sender, checks message eligibility and idempotency in score_events,
+ * atomically updates chatScore, streak, longestStreak, and daily caps.
+ */
+exports.awardMessageScore = functions.https.onCall(async (data, context) => {
+  if (!context.auth || !context.auth.uid) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+  const uid = context.auth.uid;
+  const conversationId = (data.conversationId || "").trim();
+  const messageId = (data.messageId || "").trim();
+
+  if (!conversationId || !messageId) {
+    throw new functions.https.HttpsError("invalid-argument", "conversationId and messageId are required.");
+  }
+
+  const db = admin.firestore();
+  const msgDoc = await db.collection("conversations")
+    .doc(conversationId)
+    .collection("messages")
+    .doc(messageId)
+    .get();
+
+  if (!msgDoc.exists) {
+    throw new functions.https.HttpsError("not-found", "Message does not exist.");
+  }
+
+  const msg = msgDoc.data();
+  if (msg.senderId !== uid) {
+    throw new functions.https.HttpsError("permission-denied", "Only the message sender can earn score.");
+  }
+  if (msg.isDeleted) {
+    return { success: false, reason: "Deleted message is ineligible" };
+  }
+
+  const validTypes = ["text", "image", "voice", "file"];
+  if (!validTypes.includes(msg.type)) {
+    return { success: false, reason: `Message type ${msg.type} ineligible` };
+  }
+  if (msg.type === "text" && (!msg.text || !msg.text.trim())) {
+    return { success: false, reason: "Empty text message ineligible" };
+  }
+
+  // Prevent score for self-messages in direct chats
+  const convDoc = await db.collection("conversations").doc(conversationId).get();
+  if (convDoc.exists && convDoc.data().type === "direct") {
+    const participants = convDoc.data().participants || [];
+    if (participants.filter(p => p !== uid).length === 0) {
+      return { success: false, reason: "Self-conversations are ineligible for score" };
+    }
+  }
+
+  const userRef = db.collection("users").doc(uid);
+  const eventRef = userRef.collection("score_events").doc(messageId);
+
+  // Authoritative UTC dates
+  const msgTimestamp = msg.timestamp || Date.now();
+  const msgDate = new Date(msgTimestamp);
+  const todayDate = msgDate.toISOString().split("T")[0];
+  const yesterdayDate = new Date(msgTimestamp - 86400000).toISOString().split("T")[0];
+
+  return await db.runTransaction(async (transaction) => {
+    // 1. Check idempotency: if event already processed, no-op
+    const eventDoc = await transaction.get(eventRef);
+    if (eventDoc.exists) {
+      return { success: false, reason: "Already processed" };
+    }
+
+    const userDoc = await transaction.get(userRef);
+    const userData = userDoc.exists ? userDoc.data() : {};
+
+    const currentScore = Number(userData.chatScore || 0);
+    const currentStreak = Number(userData.streakCount || 0);
+    const longestStreak = Number(userData.longestStreak || 0);
+    const lastActiveDate = userData.lastActiveDate || "";
+    const dailyPointsDate = userData.dailyPointsDate || "";
+    const dailyPointsCount = Number(userData.dailyPointsCount || 0);
+
+    // Anti-spam daily cap (max 300 points per day)
+    const todayPointsAccumulated = (dailyPointsDate === todayDate) ? dailyPointsCount : 0;
+    const isDailyCapped = todayPointsAccumulated >= 300;
+    const messagePoints = isDailyCapped ? 0 : 1;
+
+    // Daily streak logic
+    let newStreak = 1;
+    let streakBonus = 0;
+    let isStreakMilestone = false;
+
+    if (lastActiveDate === todayDate) {
+      newStreak = currentStreak <= 0 ? 1 : currentStreak;
+      streakBonus = 0;
+      isStreakMilestone = false;
+    } else if (lastActiveDate === yesterdayDate) {
+      newStreak = currentStreak + 1;
+      streakBonus = 5;
+      isStreakMilestone = true;
+    } else {
+      // Missed a day or first streak start
+      newStreak = 1;
+      streakBonus = lastActiveDate ? 0 : 5; // First time starting streak awards milestone bonus
+      isStreakMilestone = !lastActiveDate;
+    }
+
+    const newLongestStreak = Math.max(longestStreak, newStreak);
+    const pointsDelta = messagePoints + streakBonus;
+    const newScore = currentScore + pointsDelta;
+
+    // Idempotency event record
+    transaction.set(eventRef, {
+      messageId: messageId,
+      conversationId: conversationId,
+      messagePoints: messagePoints,
+      streakBonus: streakBonus,
+      pointsDelta: pointsDelta,
+      date: todayDate,
+      timestamp: Date.now()
+    });
+
+    // Update user document
+    transaction.set(userRef, {
+      chatScore: newScore,
+      streakCount: newStreak,
+      longestStreak: newLongestStreak,
+      lastActiveDate: todayDate,
+      dailyPointsDate: todayDate,
+      dailyPointsCount: todayPointsAccumulated + pointsDelta
+    }, { merge: true });
+
+    return {
+      success: true,
+      pointsAwarded: pointsDelta,
+      totalScore: newScore,
+      streakBonus: streakBonus,
+      currentStreak: newStreak,
+      longestStreak: newLongestStreak,
+      isStreakMilestone: isStreakMilestone
+    };
+  });
+});

@@ -17,17 +17,48 @@ service cloud.firestore {
       );
     }
 
+    function isValidUserUpdate(userId) {
+      if (!isOwner(userId)) {
+        return false;
+      }
+      let diff = request.resource.data.diff(resource.data);
+      let scoreKeys = ['chatScore', 'streakCount', 'longestStreak', 'lastActiveDate', 'dailyPointsCount', 'dailyPointsDate'];
+      // Normal owner update when score fields are untouched
+      if (!diff.affectedKeys().hasAny(scoreKeys)) {
+        return true;
+      }
+      // Protected score fields: cannot write arbitrary scores (max +6 per message event), cannot decrease, streak increments at most +1
+      return (
+        (!diff.affectedKeys().hasAny(['chatScore']) || (
+          request.resource.data.chatScore >= (resource.data.chatScore == null ? 0 : resource.data.chatScore) &&
+          request.resource.data.chatScore <= (resource.data.chatScore == null ? 0 : resource.data.chatScore) + 6
+        )) &&
+        (!diff.affectedKeys().hasAny(['streakCount']) || (
+          request.resource.data.streakCount >= 0 &&
+          request.resource.data.streakCount <= (resource.data.streakCount == null ? 0 : resource.data.streakCount) + 1
+        ))
+      );
+    }
+
     // Users collection - profile updates restricted to owner or admin, 
+    // with strict score bounds to prevent arbitrary score tampering,
     // except atomic friendship establishment which only allows adding oneself to the friends array
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) || isAdmin();
-      allow update: if isOwner(userId) || isAdmin() || (
+      allow update: if isAdmin() || isValidUserUpdate(userId) || (
         isAuthenticated() && 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friends']) &&
         request.auth.uid in request.resource.data.friends
       );
       allow delete: if isOwner(userId) || isAdmin();
+
+      // Score events subcollection for idempotency and audit ledger
+      match /score_events/{eventId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && request.resource.data.messageId == eventId;
+        allow update, delete: if false; // Append-only immutable ledger
+      }
     }
 
     // Usernames mapping collection (enforces unique usernames globally)

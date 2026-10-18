@@ -148,12 +148,18 @@ fun UserSearchScreen(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                  Text(
-                    text = user.displayName.ifEmpty { user.username },
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = LightPrimaryText
-                  )
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                      text = user.displayName.ifEmpty { user.username },
+                      fontSize = 16.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = LightPrimaryText
+                    )
+                    if (user.chatScore > 0L) {
+                      Spacer(modifier = Modifier.width(6.dp))
+                      ChatScoreBadge(score = user.chatScore, streakCount = user.streakCount)
+                    }
+                  }
                   Text(
                     text = user.handle,
                     fontSize = 13.sp,
@@ -326,7 +332,12 @@ fun UserSearchScreen(
               textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Authoritative public score, tier and daily streak card
+            PublicScoreCard(user = user)
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Action Buttons adhering to friend request status
             when {

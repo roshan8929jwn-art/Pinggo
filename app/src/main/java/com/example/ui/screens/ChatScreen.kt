@@ -113,6 +113,15 @@ fun ChatScreen(
   val isBlockedByMe = currentUser?.blockedUsers?.contains(otherUid) == true || viewModel.cachedBlockedUsers.contains(otherUid)
   val isBlockedByOther = otherUser?.blockedUsers?.contains(myUid) == true
 
+  var showUserProfileDialog by remember { mutableStateOf(false) }
+  var latestScoreEvent by remember { mutableStateOf<com.example.model.ScoreEvent?>(null) }
+
+  LaunchedEffect(Unit) {
+    viewModel.scoreEvent.collect { event ->
+      latestScoreEvent = event
+    }
+  }
+
   val imagePickerLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
   ) { uri: Uri? ->
@@ -134,11 +143,12 @@ fun ChatScreen(
       }
     }
 
-    Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .statusBarsPadding()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .statusBarsPadding()
+      ) {
       // Liquid Glass Header (Matched to Bottom Composer)
       Surface(
         modifier = Modifier
@@ -170,24 +180,41 @@ fun ChatScreen(
             )
           }
 
-          GlassAvatar(
-            photoUrl = chatAvatar,
-            name = chatTitle,
-            size = 42.dp,
-            isOnline = canSeeLastSeen && (otherUser?.isOnline == true)
-          )
+          Box(modifier = Modifier.clickable {
+            if (otherUser != null) showUserProfileDialog = true
+          }) {
+            GlassAvatar(
+              photoUrl = chatAvatar,
+              name = chatTitle,
+              size = 42.dp,
+              isOnline = canSeeLastSeen && (otherUser?.isOnline == true)
+            )
+          }
 
           Spacer(modifier = Modifier.width(10.dp))
 
-          Column(modifier = Modifier.weight(1f)) {
-            Text(
-              text = chatTitle,
-              fontSize = 16.sp,
-              fontWeight = FontWeight.Bold,
-              color = LightPrimaryText,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis
-            )
+          Column(
+            modifier = Modifier
+              .weight(1f)
+              .clickable {
+                if (otherUser != null) showUserProfileDialog = true
+              }
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                text = chatTitle,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = LightPrimaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+              )
+              val targetScore = otherUser?.chatScore ?: 0L
+              if (targetScore > 0L) {
+                Spacer(modifier = Modifier.width(6.dp))
+                ChatScoreBadge(score = targetScore, streakCount = otherUser?.streakCount ?: 0)
+              }
+            }
             if (statusSubtitle.isNotEmpty()) {
               Text(
                 text = statusSubtitle,
@@ -816,6 +843,81 @@ fun ChatScreen(
           Spacer(modifier = Modifier.height(20.dp))
         }
       }
+    }
+
+    // Subtle floating celebration toast for message score, streaks, and level-ups
+    ScoreCelebrationToast(
+      event = latestScoreEvent,
+      onDismiss = { latestScoreEvent = null },
+      modifier = Modifier
+        .align(Alignment.TopCenter)
+        .statusBarsPadding()
+    )
+
+    // User Profile Preview with Public Chat Score
+    if (showUserProfileDialog && otherUser != null) {
+      val user = otherUser!!
+      Dialog(onDismissRequest = { showUserProfileDialog = false }) {
+        Surface(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp)),
+          color = SolidSurfaceWhite,
+          border = androidx.compose.foundation.BorderStroke(1.dp, SolidBorderColor),
+          shadowElevation = 8.dp
+        ) {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+          ) {
+            GlassAvatar(
+              photoUrl = user.photoURL,
+              name = user.displayName.ifEmpty { user.username },
+              size = 72.dp,
+              isOnline = canSeeLastSeen && user.isOnline
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+              text = user.displayName.ifEmpty { user.username },
+              fontSize = 18.sp,
+              fontWeight = FontWeight.Bold,
+              color = LightPrimaryText
+            )
+            Text(
+              text = user.handle,
+              fontSize = 13.sp,
+              color = PinggoPinkPrimary,
+              fontWeight = FontWeight.Medium
+            )
+            if (user.bio.isNotEmpty()) {
+              Spacer(modifier = Modifier.height(6.dp))
+              Text(
+                text = user.bio,
+                fontSize = 12.sp,
+                color = LightSecondaryText,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+              )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Authoritative public score, level & daily streaks
+            PublicScoreCard(user = user)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            GlassButton(
+              text = "Close",
+              isPrimary = false,
+              onClick = { showUserProfileDialog = false },
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+        }
+      }
+    }
     }
   }
 }
